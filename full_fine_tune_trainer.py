@@ -1,11 +1,8 @@
-import logging
 from typing import Dict, Any, Optional
-import torch
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     PreTrainedTokenizer,
-    TrainerCallback
 )
 from datasets import Dataset, load_dataset
 from trl import SFTTrainer, TrlParser, ModelConfig, ScriptArguments, SFTConfig
@@ -49,7 +46,7 @@ def main():
         train_dataset=datasets["train"],
         eval_dataset=datasets["test"],
         processing_class=tokenizer,
-        callbacks=[MemoryStatsCallback(), LossLoggingCallback()],
+        # callbacks=[MemoryStatsCallback(), LossLoggingCallback()],
     )
 
     # Log initial memory stats
@@ -62,6 +59,10 @@ def main():
     # Log final memory stats
     TrainingMonitor.memory_stats()
     logger.info("Training completed successfully")
+
+    logger.info("Saving the trained model...")
+    trainer.save_model()
+    logger.info("Finished saving the trained model...")
 
 def load_and_configure_tokenizer(
     model_args: ModelConfig,
