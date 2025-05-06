@@ -48,10 +48,10 @@ def main():
     trainer = SFTTrainer(
         model=model,
         args=training_args,
-        train_dataset=datasets["train"],
-        eval_dataset=datasets["test"],
+        train_dataset=datasets["train"], #.select(range(100, 200)),
+        eval_dataset=datasets["test"], #.select(range(100, 200)),
         processing_class=tokenizer,
-        callbacks=[weights_logger, grads_logger]
+        # callbacks=[weights_logger, grads_logger]
         # callbacks=[MemoryStatsCallback(), LossLoggingCallback()],
     )
 
@@ -113,7 +113,7 @@ def _prepare_datasets(
     dataset_name: str,
     dataset_config: Optional[str] = None,
     train_split: str = "train",
-    test_size: float = 0.2,
+    test_size: float = 0.05, # TODO: adjust this parameter
     seed: int = 42
 ) -> Dict[str, Dataset]:
     """Load and split the dataset."""

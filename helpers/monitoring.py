@@ -46,6 +46,7 @@ class LossLoggingCallback(TrainerCallback):
             else:
                 logger.debug(f"[Step {state.global_step}] No loss logged")
 
+# TODO: rewrite it to prevent memory leak
 class WeightsLoggingCallback(TrainerCallback):
     def __init__(self, param_name_substring="weight", log_every_n_steps=10):
         self.param_name_substring = param_name_substring
