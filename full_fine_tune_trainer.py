@@ -30,9 +30,9 @@ def main():
     logger.info("Model Kwargs: %s", model_kwargs)
 
     # Initialize components
-    tokenizer = load_and_configure_tokenizer(model_args, training_args)
-    model = initialize_model(model_args.model_name_or_path, model_kwargs)
-    datasets = prepare_datasets(
+    tokenizer = _load_and_configure_tokenizer(model_args)
+    model = _initialize_model(model_args.model_name_or_path, model_kwargs)
+    datasets = _prepare_datasets(
         script_args.dataset_name,
         script_args.dataset_config,
         script_args.dataset_train_split
@@ -64,26 +64,21 @@ def main():
     trainer.save_model()
     logger.info("Finished saving the trained model...")
 
-def load_and_configure_tokenizer(
+def _load_and_configure_tokenizer(
     model_args: ModelConfig,
-    training_args: SFTConfig
 ) -> PreTrainedTokenizer:
     """Load and configure the tokenizer."""
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_args.model_name_or_path,
-            revision=model_args.model_revision,
-            trust_remote_code=model_args.trust_remote_code,
-            fast_tokenizer=True,
-        )
-        tokenizer.pad_token = tokenizer.eos_token
-        return tokenizer
-    except Exception as e:
-        logger.error(f"Failed to load tokenizer: {str(e)}")
-        raise
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_args.model_name_or_path,
+        revision=model_args.model_revision,
+        trust_remote_code=model_args.trust_remote_code,
+        fast_tokenizer=True,
+    )
+    tokenizer.pad_token = tokenizer.eos_token
+    return tokenizer
 
 
-def prepare_datasets(
+def _prepare_datasets(
     dataset_name: str,
     dataset_config: Optional[str] = None,
     train_split: str = "train",
@@ -106,19 +101,14 @@ def prepare_datasets(
         shuffle=True
     )
 
-def initialize_model(
+def _initialize_model(
     model_name: str,
     model_kwargs: Dict[str, Any]
 ) -> AutoModelForCausalLM:
-    """Initialize the model with given configuration."""
-    try:
-        return AutoModelForCausalLM.from_pretrained(
-            model_name,
-            **model_kwargs
-        )
-    except Exception as e:
-        logger.error(f"Failed to initialize model: {str(e)}")
-        raise
+    return AutoModelForCausalLM.from_pretrained(
+        model_name,
+        **model_kwargs
+    )
 
 if __name__ == "__main__":
     main()
