@@ -1,3 +1,5 @@
+from functools import reduce
+import math
 from typing import Dict, Any, Optional
 from transformers import (
     AutoModelForCausalLM,
@@ -38,6 +40,9 @@ def main():
         script_args.dataset_train_split
     )
 
+    weights_logger = WeightsLoggingCallback(param_name_substring="mlp", log_every_n_steps=1)
+    grads_logger = GradientLoggingCallback()
+
     # overfit_small_data = datasets["train"].select(range(100))
     # Initialize trainer
     trainer = SFTTrainer(
@@ -46,6 +51,7 @@ def main():
         train_dataset=datasets["train"],
         eval_dataset=datasets["test"],
         processing_class=tokenizer,
+        callbacks=[weights_logger, grads_logger]
         # callbacks=[MemoryStatsCallback(), LossLoggingCallback()],
     )
 
@@ -60,9 +66,34 @@ def main():
     TrainingMonitor.memory_stats()
     logger.info("Training completed successfully")
 
+    _analyze_weights(weights_logger, grads_logger)
+
     logger.info("Saving the trained model...")
-    trainer.save_model()
+    # trainer.save_model()
     logger.info("Finished saving the trained model...")
+
+
+
+def _analyze_weights(weights_logger, grads_logger):
+    for step, name, weight_tensor in weights_logger.logged_weights:
+        print(f"Step {step} - {name} - shape: {weight_tensor.shape}")
+    
+    all_dims = []
+    for _, _, weight_tensor in weights_logger.logged_weights:
+        all_dims.extend(weight_tensor.shape)
+
+    # Compute the GCD of all dimensions
+    def compute_gcd_of_list(numbers):
+        return reduce(math.gcd, numbers)
+
+    gcd_all_dims = compute_gcd_of_list(all_dims)
+    print(f"GCD of all weight tensor dimensions: {gcd_all_dims}")
+
+    for layer_name, grad_log in grads_logger.step_gradients.items():
+        grads = [g for _, g in grad_log]
+        avg = sum(grads) / len(grads)
+        print(f"{layer_name}: average gradient over steps = {avg}")
+
 
 def _load_and_configure_tokenizer(
     model_args: ModelConfig,
