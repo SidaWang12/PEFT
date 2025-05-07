@@ -1,4 +1,3 @@
-import re
 from typing import Any, Callable, Optional, Union
 from trl.trainer.sft_trainer import SFTTrainer, SFTConfig
 import torch
@@ -16,7 +15,7 @@ from transformers import (
 from transformers.trainer_callback import TrainerCallback
 from transformers.trainer_utils import EvalPrediction
 from datasets import Dataset, IterableDataset
-from deepspeed.utils import safe_get_full_grad
+from trainers.smt_gradient_helper import *
 
 class PeftTrainer(SFTTrainer):
     def __init__(self,
@@ -42,6 +41,7 @@ class PeftTrainer(SFTTrainer):
                          preprocess_logits_for_metrics, peft_config,
                          formatting_func)
         self.warmup_grads = {}
+        self.warmup_grads_count = {}
 
 
     def training_step(
@@ -49,37 +49,7 @@ class PeftTrainer(SFTTrainer):
     ) -> torch.Tensor:
         loss = super().training_step(model, inputs, num_items_in_batch)
 
-        self.warmup_grads = self._get_warmup_grads(model)
+        get_warmup_grads(model, self.warmup_grads, self.warmup_grads_count)
 
         return loss
     
-    def _get_warmup_grads(model):
-        warmup_grads = {}
-
-        pattern = re.compile(r'model\.layers\.(\d+)\.')
-
-        for name, param in model.named_parameters():
-            match = pattern.search(name)
-            layer_number = int(match.group(1)) if match else None
-            if 'mlp' in name:
-                grad = safe_get_full_grad(
-                    param)  # (hidden_dim, head_dim)
-                module_name = 'gate_proj' if 'gate_proj' in name else 'up_proj' if 'up_proj' in name else 'down_proj'
-
-                #defaultdict(torch.float32)
-                if (module_name, layer_number) not in warmup_grads:
-                    # warmup_grads[(module_name, layer_number)] = grad.detach().to(torch.float32)
-                    warmup_grads[(
-                        module_name,
-                        layer_number)] = grad.detach().cpu().to(
-                            torch.float32)
-
-                else:
-                    warmup_grads[(
-                        module_name,
-                        layer_number)] += grad.detach().cpu().to(
-                            torch.float32)
-                    # warmup_grads[(module_name, layer_number)] += grad.detach().to(torch.float32)
-                    # del grad
-        
-        return warmup_grads
