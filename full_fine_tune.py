@@ -44,8 +44,8 @@ def main():
     block_size = get_gcd_from_weight_shape(model)
     logger.info(f"block_size is {block_size}")
 
-    weights_logger = WeightsLoggingCallback(param_name_substring="mlp", log_every_n_steps=1)
-    grads_logger = GradientLoggingCallback()
+    # weights_logger = WeightsLoggingCallback(param_name_substring="mlp", log_every_n_steps=1)
+    # grads_logger = GradientLoggingCallback()
 
     # overfit_small_data = datasets["train"].select(range(100))
     # Initialize trainer
@@ -66,6 +66,9 @@ def main():
     # Start training
     logger.info("Starting training...")
     trainer.train()
+
+    warmup_grads = trainer.warmup_grads
+    print(warmup_grads.keys())
 
     # Log final memory stats
     TrainingMonitor.memory_stats()
