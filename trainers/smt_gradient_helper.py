@@ -151,6 +151,10 @@ def _plot_layer_level_grads(grad_statistics, output_dir, statistical_method):
 
 def _plot_gradient_per_block_distribution(analysis_plot_path,
                                           gradients_per_block):
+    all_grads = np.concatenate(list(gradients_per_block.values()))
+    global_min = np.min(all_grads)
+    global_max = np.max(all_grads)
+
     num_modules = len(gradients_per_block)
     _, axes = plt.subplots(num_modules, 1, figsize=(10, 4 * num_modules))
 
@@ -168,6 +172,8 @@ def _plot_gradient_per_block_distribution(analysis_plot_path,
         ax.set_title(f'Gradient Distribution: {module_name}')
         ax.set_xlabel('Gradient Magnitude')
         ax.set_ylabel('Frequency')
+
+        ax.set_xlim(global_min * 0.9, global_max * 1.1)
 
         # Add vertical line at mean
         mean_grad = np.mean(grads)
