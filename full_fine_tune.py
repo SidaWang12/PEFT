@@ -1,4 +1,5 @@
 from functools import reduce
+import os
 import math
 from typing import Dict, Any, Optional
 from transformers import (
@@ -19,6 +20,9 @@ def main():
     # Parse arguments
     parser = TrlParser((ScriptArguments, SFTConfig, ModelConfig))
     script_args, training_args, model_args = parser.parse_args_and_config()
+
+    enable_analysis = True
+    downsample_attention_blocks_ratio = 0.005
     
     logger.info("Script Arguments: %s", script_args)
     logger.info("Training Arguments: %s", training_args)
@@ -42,8 +46,8 @@ def main():
         script_args.dataset_train_split
     )
 
-    block_size = get_gcd_from_weight_shape(model)
-    logger.info(f"block_size is {block_size}")
+    block_dimension = get_gcd_from_weight_shape(model)
+    logger.info(f"block_size is {block_dimension}")
 
     # overfit_small_data = datasets["train"].select(range(100))
     # Initialize trainer
@@ -63,7 +67,21 @@ def main():
     logger.info("Starting training...")
     trainer.train()
 
-    analyze_layer_level_grads(training_args.output_dir, trainer.warmup_grads, trainer.warmup_grads_count)
+
+    warmup_grads_count_all_layers = list(trainer.warmup_grads_count.values())
+    warmup_grads_count_all_layer_all_same = \
+        all(v == trainer.state.global_step for v in warmup_grads_count_all_layers)
+    assert warmup_grads_count_all_layer_all_same, \
+           f"Mismatch in warmup_grads_count: {trainer.warmup_grads_count}"
+
+    warup_abs_grads = {}
+    for key in trainer.warmup_grads:
+        warup_abs_grads[key] = trainer.warmup_grads[key].abs() / trainer.state.global_step
+
+    if enable_analysis:
+        analyze_layer_level_grads(os.path.join(training_args.output_dir, 'plots'), warup_abs_grads)
+
+    select_submatrix_based_on_grads(model, warup_abs_grads, block_dimension, downsample_attention_blocks_ratio)
 
     # Log final memory stats
     TrainingMonitor.memory_stats()
@@ -101,7 +119,7 @@ def _prepare_datasets(
     dataset_name: str,
     dataset_config: Optional[str] = None,
     train_split: str = "train",
-    test_size: float = 0.05, # TODO: adjust this parameter
+    test_size: float = 0.05, # TODO: adjust this parameter, and add to args
     seed: int = 42
 ) -> Dict[str, Dataset]:
     """Load and split the dataset."""
