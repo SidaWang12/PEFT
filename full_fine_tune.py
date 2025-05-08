@@ -1,4 +1,5 @@
 from functools import reduce
+import json
 import os
 import math
 from typing import Dict, Any, Optional
@@ -66,6 +67,8 @@ def main():
     # Start training
     logger.info("Starting training...")
     trainer.train()
+    TrainingMonitor.memory_stats()
+    logger.info("Training completed successfully")
 
     warmup_grads_count_all_layers = list(trainer.warmup_grads_count.values())
     warmup_grads_count_all_layer_all_same = \
@@ -87,13 +90,13 @@ def main():
         downsample_attention_blocks_ratio, enable_analysis, analysis_plot_path)
     logger.info(f"selected_ranked_block {selected_submatrix}")
 
-    # Log final memory stats
-    TrainingMonitor.memory_stats()
-    logger.info("Training completed successfully")
-
-    # logger.info("Saving the trained model...")
-    # trainer.save_model()
-    # logger.info("Finished saving the trained model...")
+    with open(os.path.join(training_args.output_dir, 'selected_blocks.json'),
+              "w") as f:
+        json.dump({str(k): v
+                   for k, v in selected_submatrix.items()},
+                  f,
+                  separators=(",", ":"),
+                  indent=None)
 
 
 def get_gcd_from_weight_shape(model):
