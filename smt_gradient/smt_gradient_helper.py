@@ -1,5 +1,6 @@
 from collections import defaultdict
 from functools import reduce
+import json
 import math
 import re
 import heapq
@@ -31,6 +32,14 @@ def process_and_select_submatrix(model, warmup_grads, global_step, enable_analys
         analysis_plot_path)
 
     return selected_submatrix
+
+def save_submatrix(selected_submatrix, submatrix_file_path):
+    with open(submatrix_file_path, "w") as f:
+        json.dump({str(k): v
+                   for k, v in selected_submatrix.items()},
+                  f,
+                  separators=(",", ":"),
+                  indent=None)
 
 def _get_gcd_from_weight_shape(model: AutoModelForCausalLM) -> int:
     """

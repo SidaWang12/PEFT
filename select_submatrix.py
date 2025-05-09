@@ -1,4 +1,3 @@
-import json
 import os
 from typing import Dict, Any, Optional
 from transformers import (
@@ -9,7 +8,7 @@ from transformers import (
 from datasets import Dataset, load_dataset
 from trl import TrlParser, ModelConfig, ScriptArguments
 
-from trainers.PeftTrainer import PeftTrainer
+from trainers.peft_trainer import PeftTrainer
 from helpers.monitoring import *
 from helpers.logging import logger
 from smt_gradient.smt_gradient_helper import *
@@ -66,13 +65,9 @@ def main():
       training_args.output_dir, training_args.downsample_attention_blocks_ratio)
     logger.info(f"selected_ranked_block {selected_submatrix}")
     
-    with open(os.path.join(training_args.output_dir, 'selected_blocks.json'),
-              "w") as f:
-        json.dump({str(k): v
-                   for k, v in selected_submatrix.items()},
-                  f,
-                  separators=(",", ":"),
-                  indent=None)
+    submatrix_file_path =  os.path.join(training_args.output_dir, 'selected_blocks.json')
+    save_submatrix(selected_submatrix, submatrix_file_path)
+    logger.info(f"Submatrix file is saved to {submatrix_file_path}")
 
 
 def _load_and_configure_tokenizer(

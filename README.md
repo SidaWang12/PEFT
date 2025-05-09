@@ -1,8 +1,7 @@
-# Supervised Fine Tuning
-Implement the SMT paper with TRL SFTTrainer.
+# Parameter Efficient Supervised Fine-Tuning (SMT)
 
-He, Haoze, et al. "Sparse matrix in large language model fine-tuning." arXiv preprint arXiv:2405.15525 (2024).
+Implementation of Sparse Matrix Tuning (SMT) using TRL's `SFTTrainer` for efficient LLM fine-tuning, based on:
 
-```
-accelerate launch  full_fine_tune.py --config configs/config.yaml
-```
+> He, Haoze, et al. "Sparse Matrix in Large Language Model Fine-Tuning."  
+> arXiv preprint [arXiv:2405.15525](https://arxiv.org/abs/2405.15525) (2024).
+
