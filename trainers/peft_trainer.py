@@ -1,5 +1,6 @@
 import re
 from typing import Any, Callable, Dict, Optional, Tuple, Union
+from helpers.types import LayerLevelGradType
 from trl.trainer.sft_trainer import SFTTrainer, SFTConfig
 import torch
 from torch import nn
@@ -65,8 +66,7 @@ class PeftTrainer(SFTTrainer):
     
 
 def _get_warmup_grads(
-    model: torch.nn.Module, warmup_grads: Dict[Tuple[str, int],
-                                                torch.Tensor]) -> None:
+    model: torch.nn.Module, warmup_grads: LayerLevelGradType) -> None:
     """
     Accumulate warmup gradients for MLP layers across steps.
     """

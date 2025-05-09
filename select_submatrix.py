@@ -5,8 +5,8 @@ from trainers.peft_trainer import PeftTrainer
 from helpers.monitoring import TrainingMonitor
 from helpers.logging import logger
 from smt_gradient.smt_gradient_selector import process_and_select_submatrix, save_submatrix
-from helpers.peft_config import PeftConfig
-from helpers.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
+from model_and_config_utils.peft_config import PeftConfig
+from model_and_config_utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
 
 def main():
     # Parse arguments

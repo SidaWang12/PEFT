@@ -1,13 +1,13 @@
 import os
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 from matplotlib import pyplot as plt
 import numpy as np
-import torch
+
+from helpers.types import LayerLevelGradType
 
 
-def plot_layer_level_grads(grad_statistics: Dict[Tuple[str, int],
-                                                 torch.Tensor],
+def plot_layer_level_grads(grad_statistics: LayerLevelGradType,
                            output_dir: str, statistical_method: str) -> None:
     os.makedirs(output_dir, exist_ok=True)
 

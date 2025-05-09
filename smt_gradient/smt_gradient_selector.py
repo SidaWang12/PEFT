@@ -7,14 +7,14 @@ import heapq
 from typing import Dict, Tuple
 import torch
 from helpers.logging import logger
-from helpers.types import SelectedSubmatrixType
+from helpers.types import LayerLevelGradType, SelectedSubmatrixCoordinatesType
 from smt_gradient.smt_gradient_plotter import plot_layer_level_grads, plot_gradient_per_block_distribution
 from transformers import  AutoModelForCausalLM
 
 
 def process_and_select_submatrix(model, warmup_grads, global_step, enable_analysis,
                                  output_dir, downsample_attention_blocks_ratio) -> \
-                                 SelectedSubmatrixType:
+                                 SelectedSubmatrixCoordinatesType:
     block_dimension = _get_gcd_from_weight_shape(model)
     logger.info(f"block_size is {block_dimension}")
 
@@ -56,8 +56,7 @@ def _get_gcd_from_weight_shape(model: AutoModelForCausalLM) -> int:
 
 
 def _analyze_layer_level_grads(
-        output_dir: str, warmup_grads: Dict[Tuple[str, int],
-                                            torch.Tensor]) -> None:
+        output_dir: str, warmup_grads: LayerLevelGradType) -> None:
     """
     Analyze and plot per-layer gradient statistics.
     """
@@ -82,11 +81,10 @@ def _mean_abs(grad_tensor: torch.Tensor) -> torch.Tensor:
 
 
 def _select_submatrix_based_on_grads(
-    model: torch.nn.Module, warup_abs_grads: Dict[Tuple[str, int],
-                                                  torch.Tensor],
+    model: torch.nn.Module, warup_abs_grads: LayerLevelGradType,
     block_dimension: int, downsample_attention_blocks_ratio: float,
     enable_analysis: bool, analysis_plot_path: str
-) -> SelectedSubmatrixType:
+) -> SelectedSubmatrixCoordinatesType:
     targeted_module_dims = {}
 
     TARGET_MODULE_NAMES = {
