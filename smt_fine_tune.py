@@ -1,4 +1,3 @@
-import os
 from trl import TrlParser, ModelConfig, ScriptArguments
 
 from trainers.peft_trainer import PeftTrainer
@@ -47,20 +46,6 @@ def main():
 
     # Log initial memory stats
     TrainingMonitor.memory_stats()
-
-    # Start training
-    logger.info("Starting training...")
-    trainer.train()
-    TrainingMonitor.memory_stats()
-    logger.info("Training completed successfully")
-
-    selected_submatrix = process_and_select_submatrix(model, trainer.warmup_grads, trainer.state.global_step, training_args.enable_analysis,
-      training_args.output_dir, training_args.downsample_attention_blocks_ratio)
-    logger.info(f"selected_ranked_block {selected_submatrix}")
-    
-    submatrix_file_path =  os.path.join(training_args.output_dir, 'selected_blocks.json')
-    save_submatrix(selected_submatrix, submatrix_file_path)
-    logger.info(f"Submatrix file is saved to {submatrix_file_path}")
 
 
 if __name__ == "__main__":
