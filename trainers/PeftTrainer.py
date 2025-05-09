@@ -15,7 +15,7 @@ from transformers import (
 from transformers.trainer_callback import TrainerCallback
 from transformers.trainer_utils import EvalPrediction
 from datasets import Dataset, IterableDataset
-from trainers.smt_gradient_helper import *
+from smt_gradient.smt_gradient_helper import *
 
 
 class PeftTrainer(SFTTrainer):
@@ -51,7 +51,6 @@ class PeftTrainer(SFTTrainer):
                          preprocess_logits_for_metrics, peft_config,
                          formatting_func)
         self.warmup_grads = {}
-        self.warmup_grads_count = {}
 
     def training_step(self,
                       model: nn.Module,
@@ -59,6 +58,6 @@ class PeftTrainer(SFTTrainer):
                       num_items_in_batch=None) -> torch.Tensor:
         loss = super().training_step(model, inputs, num_items_in_batch)
 
-        get_warmup_grads(model, self.warmup_grads, self.warmup_grads_count)
+        get_warmup_grads(model, self.warmup_grads)
 
         return loss

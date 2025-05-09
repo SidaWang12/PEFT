@@ -9,23 +9,19 @@ from transformers import (
     PreTrainedTokenizer,
 )
 from datasets import Dataset, load_dataset
-from trl import SFTTrainer, TrlParser, ModelConfig, ScriptArguments, SFTConfig
+from trl import TrlParser, ModelConfig, ScriptArguments
 
 from trainers.PeftTrainer import PeftTrainer
 from helpers.monitoring import *
 from helpers.logging import logger
-from trainers.smt_gradient_helper import *
+from smt_gradient.smt_gradient_helper import *
+from trainers.peft_config import PeftConfig
 
 
 def main():
     # Parse arguments
-    parser = TrlParser((ScriptArguments, SFTConfig, ModelConfig))
+    parser = TrlParser((ScriptArguments, PeftConfig, ModelConfig))
     script_args, training_args, model_args = parser.parse_args_and_config()
-
-    enable_analysis = True
-    analysis_plot_path = os.path.join(training_args.output_dir, 'plots')
-
-    downsample_attention_blocks_ratio = 0.005
 
     logger.info("Script Arguments: %s", script_args)
     logger.info("Training Arguments: %s", training_args)
@@ -45,7 +41,9 @@ def main():
     model = _initialize_model(model_args.model_name_or_path, model_kwargs)
     datasets = _prepare_datasets(script_args.dataset_name,
                                  script_args.dataset_config,
-                                 script_args.dataset_train_split)
+                                 script_args.dataset_train_split,
+                                 training_args.seed,
+                                 training_args.test_set_percentage)
 
     block_dimension = get_gcd_from_weight_shape(model)
     logger.info(f"block_size is {block_dimension}")
@@ -70,24 +68,21 @@ def main():
     TrainingMonitor.memory_stats()
     logger.info("Training completed successfully")
 
-    warmup_grads_count_all_layers = list(trainer.warmup_grads_count.values())
-    warmup_grads_count_all_layer_all_same = \
-        all(v == trainer.state.global_step for v in warmup_grads_count_all_layers)
-    assert warmup_grads_count_all_layer_all_same, \
-           f"Mismatch in warmup_grads_count: {trainer.warmup_grads_count}"
-
     warup_abs_grads = {}
     for key in trainer.warmup_grads:
         warup_abs_grads[key] = trainer.warmup_grads[key].abs(
         ) / trainer.state.global_step
 
+    enable_analysis = training_args.enable_analysis
+    analysis_plot_path = os.path.join(training_args.output_dir, 'plots')
+
     if enable_analysis:
-        # TODO: what's the percentage are 0?
         analyze_layer_level_grads(analysis_plot_path, warup_abs_grads)
 
     selected_submatrix = select_submatrix_based_on_grads(
         model, warup_abs_grads, block_dimension,
-        downsample_attention_blocks_ratio, enable_analysis, analysis_plot_path)
+        training_args.downsample_attention_blocks_ratio, enable_analysis,
+        analysis_plot_path)
     logger.info(f"selected_ranked_block {selected_submatrix}")
 
     with open(os.path.join(training_args.output_dir, 'selected_blocks.json'),
@@ -99,7 +94,11 @@ def main():
                   indent=None)
 
 
-def get_gcd_from_weight_shape(model):
+def get_gcd_from_weight_shape(model: AutoModelForCausalLM) -> int:
+    """
+    Computes the greatest common divisor (GCD) of all tensor dimensions
+    in MLP and attention layers.
+    """
     all_dims = []
     for name, param in model.named_parameters():
         if "mlp" in name or "attn" in name:
@@ -108,7 +107,7 @@ def get_gcd_from_weight_shape(model):
 
 
 def _load_and_configure_tokenizer(
-    model_args: ModelConfig, ) -> PreTrainedTokenizer:
+        model_args: ModelConfig) -> PreTrainedTokenizer:
     """Load and configure the tokenizer."""
     logger.info("Loading tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained(
@@ -121,13 +120,9 @@ def _load_and_configure_tokenizer(
     return tokenizer
 
 
-def _prepare_datasets(
-    dataset_name: str,
-    dataset_config: Optional[str] = None,
-    train_split: str = "train",
-    test_size: float = 0.05,  # TODO: adjust this parameter, and add to args
-    seed: int = 42
-) -> Dict[str, Dataset]:
+def _prepare_datasets(dataset_name: str, dataset_config: Optional[str],
+                      train_split: str, seed,
+                      test_set_percentage: float) -> Dict[str, Dataset]:
     """Load and split the dataset."""
     def preprocess_function(example: Dict[str, Any]) -> Dict[str, Any]:
         return {
@@ -138,7 +133,7 @@ def _prepare_datasets(
     dataset = load_dataset(dataset_name, name=dataset_config)
     dataset = dataset[train_split]
     dataset = dataset.map(preprocess_function)
-    return dataset.train_test_split(test_size=test_size,
+    return dataset.train_test_split(test_size=test_set_percentage,
                                     seed=seed,
                                     shuffle=True)
 

@@ -1,7 +1,5 @@
-from collections import defaultdict
 import torch
-from transformers import (AutoModelForCausalLM, AutoTokenizer,
-                          PreTrainedTokenizer, TrainerCallback)
+from transformers import TrainerCallback
 from helpers.logging import logger
 
 
@@ -36,58 +34,3 @@ class LossLoggingCallback(TrainerCallback):
                     f"[Step {state.global_step}] Loss: {last_log['loss']:.4f}")
             else:
                 logger.debug(f"[Step {state.global_step}] No loss logged")
-
-
-# TODO: rewrite it to prevent memory leak
-class WeightsLoggingCallback(TrainerCallback):
-    def __init__(self, param_name_substring="weight", log_every_n_steps=10):
-        self.param_name_substring = param_name_substring
-        self.log_every_n_steps = log_every_n_steps
-        self.logged_weights = []
-
-    def on_step_begin(self, args, state, control, **kwargs):
-        """Verify we're entering training steps"""
-        # if state.global_step % self.log_every_n_steps == 0:
-        #     print(f"\n[WeightsLogging] Step {state.global_step} begin")
-
-    def on_step_end(self, args, state, control, **kwargs):
-        if state.global_step % self.log_every_n_steps != 0:
-            return
-
-        model = kwargs.get("model")
-        if model is None:
-            print("Warning: No model in kwargs!")
-            return
-
-        # #print(f"\n[WeightsLogging] Recording at step {state.global_step}")
-        for name, param in model.named_parameters():
-            if self.param_name_substring in name and param.requires_grad:
-                # print(f"  {name}: requires_grad={param.requires_grad}, grad={param.grad is not None}")
-                self.logged_weights.append(
-                    (state.global_step, name, param.detach().cpu().clone()))
-
-
-# TODO: may need to rewrite training_step in trainer.py to get grad information.
-class GradientLoggingCallback(TrainerCallback):
-    def __init__(self, log_every_n_steps=10):
-        self.log_every_n_steps = log_every_n_steps
-        self.step_gradients = defaultdict(list)
-
-    # def on_backward_end(self, args, state, control, **kwargs):
-    #     print(f"\n[GradientLogging] Backward end at step {state.global_step}")
-
-    #     model = kwargs.get("model")
-    #     if model is None:
-    #         print("Warning: No model in kwargs!")
-    #         return
-
-    #     any_grads = False
-    #     for name, param in model.named_parameters():
-    #         if param.grad is not None:
-    #             any_grads = True
-    #             avg_grad = param.grad.abs().mean().item()
-    #             self.step_gradients[name].append((state.global_step, avg_grad))
-    #             print(f"  {name}: grad_norm={avg_grad:.4e}")
-
-    #     if not any_grads:
-    #         print("  No gradients found for any parameters!")
