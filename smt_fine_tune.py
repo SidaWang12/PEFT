@@ -5,7 +5,7 @@ from smt_gradient.model_sparsifier import model_freeze_unselected_matrix_layer
 from trl import TrlParser, ModelConfig, ScriptArguments
 
 from trainers.peft_trainer import PeftTrainer, PeftTrainerMode
-from utils.monitoring import TrainingMonitor
+from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
 from utils.logging import logger
 from model_and_config_utils.peft_config import PeftConfig
 from model_and_config_utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
@@ -54,7 +54,8 @@ def main():
         train_dataset=datasets["train"],  #.select(range(100, 200)),
         eval_dataset=datasets["test"],  #.select(range(100, 200)),
         processing_class=tokenizer,
-        mode=PeftTrainerMode.TrainingMode)
+        mode=PeftTrainerMode.TrainingMode,
+        callbacks=[GPUMemoryStatsCallback()])
 
     # Log initial memory stats
     TrainingMonitor.memory_stats()

@@ -2,7 +2,7 @@ import os
 from trl import TrlParser, ModelConfig, ScriptArguments
 
 from trainers.peft_trainer import PeftTrainerMode, PeftTrainer
-from utils.monitoring import TrainingMonitor
+from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
 from utils.logging import logger
 from smt_gradient.smt_gradient_selector import process_and_select_submatrix, save_submatrix
 from model_and_config_utils.peft_config import PeftConfig
@@ -44,7 +44,8 @@ def main():
         train_dataset=datasets["train"],  #.select(range(100, 200)),
         eval_dataset=datasets["test"],  #.select(range(100, 200)),
         processing_class=tokenizer,
-        mode=PeftTrainerMode.SelectSubmatrixMode)
+        mode=PeftTrainerMode.SelectSubmatrixMode,
+        callbacks=[GPUMemoryStatsCallback()])
 
     # Log initial memory stats
     TrainingMonitor.memory_stats()
