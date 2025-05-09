@@ -1,7 +1,9 @@
-from typing import Any, Callable, Optional, Union
+import re
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 from trl.trainer.sft_trainer import SFTTrainer, SFTConfig
 import torch
 from torch import nn
+from deepspeed.utils import safe_get_full_grad
 
 from transformers import (
     BaseImageProcessor,
@@ -15,7 +17,6 @@ from transformers import (
 from transformers.trainer_callback import TrainerCallback
 from transformers.trainer_utils import EvalPrediction
 from datasets import Dataset, IterableDataset
-from smt_gradient.smt_gradient_helper import *
 
 
 class PeftTrainer(SFTTrainer):

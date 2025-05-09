@@ -2,13 +2,13 @@ from collections import defaultdict
 from functools import reduce
 import json
 import math
+import os
 import re
 import heapq
 from typing import DefaultDict, Dict, List, Tuple
-from deepspeed.utils import safe_get_full_grad
 import torch
 from helpers.logging import logger
-from smt_gradient.smt_gradient_plotter import *
+from smt_gradient.smt_gradient_plotter import plot_layer_level_grads, plot_gradient_per_block_distribution
 from transformers import  AutoModelForCausalLM
 
 

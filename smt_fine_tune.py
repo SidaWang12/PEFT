@@ -1,11 +1,10 @@
 from trl import TrlParser, ModelConfig, ScriptArguments
 
 from trainers.peft_trainer import PeftTrainer
-from helpers.monitoring import *
+from helpers.monitoring import TrainingMonitor
 from helpers.logging import logger
-from smt_gradient.smt_gradient_helper import *
 from helpers.peft_config import PeftConfig
-from helpers.model_utils import *
+from helpers.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
 
 def main():
     # Parse arguments
@@ -33,19 +32,39 @@ def main():
                                  script_args.dataset_train_split,
                                  training_args.seed,
                                  training_args.test_set_percentage)
+    
+    print("Print the requres_grad of model weight.")
+    for name, param in model.named_parameters():
+        print(name, "requres_grad", param.requires_grad)
 
-    # overfit_small_data = datasets["train"].select(range(100))
-    # Initialize trainer
-    trainer = PeftTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=datasets["train"],  #.select(range(100, 200)),
-        eval_dataset=datasets["test"],  #.select(range(100, 200)),
-        processing_class=tokenizer,
-    )
+    # print matrix sparsity trainable parameters
+    total_num = sum(p.numel() for p in model.parameters())
+    selected_num = sum(p.numel()
+                        for p in model.parameters()
+                        if p.requires_grad)
+    logger.info(f"Number of Total parameters: {total_num/1e6} M")
+    rate = (selected_num / total_num) * 100
+    logger.info(f"Number of trainable parameters: {selected_num/1e6} M,\ns \
+               about {rate}% matrix sparsity parameters in the model are training")
 
-    # Log initial memory stats
-    TrainingMonitor.memory_stats()
+    # # overfit_small_data = datasets["train"].select(range(100))
+    # # Initialize trainer
+    # trainer = PeftTrainer(
+    #     model=model,
+    #     args=training_args,
+    #     train_dataset=datasets["train"],  #.select(range(100, 200)),
+    #     eval_dataset=datasets["test"],  #.select(range(100, 200)),
+    #     processing_class=tokenizer,
+    # )
+
+    # # Log initial memory stats
+    # TrainingMonitor.memory_stats()
+
+    # # Start training
+    # logger.info("Starting training...")
+    # trainer.train()
+    # TrainingMonitor.memory_stats()
+    # logger.info("Training completed successfully")
 
 
 if __name__ == "__main__":
