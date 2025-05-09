@@ -1,4 +1,6 @@
 from collections import defaultdict
+from functools import reduce
+import math
 import re
 import heapq
 from typing import DefaultDict, Dict, List, Tuple
@@ -6,36 +8,43 @@ from deepspeed.utils import safe_get_full_grad
 import torch
 from helpers.logging import logger
 from smt_gradient.smt_gradient_plotter import *
+from transformers import  AutoModelForCausalLM
 
 
-def get_warmup_grads(
-        model: torch.nn.Module, warmup_grads: Dict[Tuple[str, int],
-                                                   torch.Tensor]) -> None:
+def process_and_select_submatrix(model, warmup_grads, global_step, enable_analysis, output_dir, downsample_attention_blocks_ratio):
+    block_dimension = _get_gcd_from_weight_shape(model)
+    logger.info(f"block_size is {block_dimension}")
+
+    warup_abs_grads = {}
+    for key in warmup_grads:
+        warup_abs_grads[key] = warmup_grads[key].abs(
+        ) / global_step
+
+    analysis_plot_path = os.path.join(output_dir, 'plots')
+
+    if enable_analysis:
+        _analyze_layer_level_grads(analysis_plot_path, warup_abs_grads)
+
+    selected_submatrix = _select_submatrix_based_on_grads(
+        model, warup_abs_grads, block_dimension,
+        downsample_attention_blocks_ratio, enable_analysis,
+        analysis_plot_path)
+
+    return selected_submatrix
+
+def _get_gcd_from_weight_shape(model: AutoModelForCausalLM) -> int:
     """
-    Accumulate warmup gradients for MLP layers across steps.
+    Computes the greatest common divisor (GCD) of all tensor dimensions
+    in MLP and attention layers.
     """
-    pattern = re.compile(r'model\.layers\.(\d+)\.')
-
+    all_dims = []
     for name, param in model.named_parameters():
-        match = pattern.search(name)
-        layer_number = int(match.group(1)) if match else None
-        if 'mlp' in name and 'weight' in name:
-            grad = safe_get_full_grad(param)  # (hidden_dim, head_dim)
-            module_name = 'gate_proj' if 'gate_proj' in name else 'up_proj' if 'up_proj' in name else 'down_proj'
-            key = (module_name, layer_number)
-
-            #defaultdict(torch.float32)
-            if key not in warmup_grads:
-                # warmup_grads[(module_name, layer_number)] = grad.detach().to(torch.float32)
-                warmup_grads[key] = grad.detach().cpu().to(torch.float32)
-
-            else:
-                warmup_grads[key] += grad.detach().cpu().to(torch.float32)
-                # warmup_grads[(module_name, layer_number)] += grad.detach().to(torch.float32)
-                # del grad
+        if "mlp" in name or "attn" in name:
+            all_dims.extend(param.shape)
+    return reduce(math.gcd, all_dims)
 
 
-def analyze_layer_level_grads(
+def _analyze_layer_level_grads(
         output_dir: str, warmup_grads: Dict[Tuple[str, int],
                                             torch.Tensor]) -> None:
     """
@@ -61,7 +70,7 @@ def _mean_abs(grad_tensor: torch.Tensor) -> torch.Tensor:
     return grad_tensor.mean(dim=(1, 3)).abs()
 
 
-def select_submatrix_based_on_grads(
+def _select_submatrix_based_on_grads(
     model: torch.nn.Module, warup_abs_grads: Dict[Tuple[str, int],
                                                   torch.Tensor],
     block_dimension: int, downsample_attention_blocks_ratio: float,

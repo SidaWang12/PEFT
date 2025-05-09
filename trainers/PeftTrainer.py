@@ -58,6 +58,33 @@ class PeftTrainer(SFTTrainer):
                       num_items_in_batch=None) -> torch.Tensor:
         loss = super().training_step(model, inputs, num_items_in_batch)
 
-        get_warmup_grads(model, self.warmup_grads)
+        _get_warmup_grads(model, self.warmup_grads)
 
         return loss
+    
+
+def _get_warmup_grads(
+    model: torch.nn.Module, warmup_grads: Dict[Tuple[str, int],
+                                                torch.Tensor]) -> None:
+    """
+    Accumulate warmup gradients for MLP layers across steps.
+    """
+    pattern = re.compile(r'model\.layers\.(\d+)\.')
+
+    for name, param in model.named_parameters():
+        match = pattern.search(name)
+        layer_number = int(match.group(1)) if match else None
+        if 'mlp' in name and 'weight' in name:
+            grad = safe_get_full_grad(param)  # (hidden_dim, head_dim)
+            module_name = 'gate_proj' if 'gate_proj' in name else 'up_proj' if 'up_proj' in name else 'down_proj'
+            key = (module_name, layer_number)
+
+            #defaultdict(torch.float32)
+            if key not in warmup_grads:
+                # warmup_grads[(module_name, layer_number)] = grad.detach().to(torch.float32)
+                warmup_grads[key] = grad.detach().cpu().to(torch.float32)
+
+            else:
+                warmup_grads[key] += grad.detach().cpu().to(torch.float32)
+                # warmup_grads[(module_name, layer_number)] += grad.detach().to(torch.float32)
+                # del grad
