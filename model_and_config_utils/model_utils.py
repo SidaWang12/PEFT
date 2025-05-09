@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from datasets import Dataset, load_dataset
 from trl import TrlParser, ModelConfig, ScriptArguments
 
@@ -47,3 +47,9 @@ def initialize_model(model_name: str,
                      model_kwargs: Dict[str, Any]) -> AutoModelForCausalLM:
     logger.info("loading model...")
     return AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
+
+def print_loss_through_whole_training(log_history: List[Dict[str, Any]]) -> None:
+    train_losses = [log["loss"] for log in log_history if "loss" in log]
+    eval_losses = [log["eval_loss"] for log in log_history if "eval_loss" in log]
+    logger.info(f"train_losses: {train_losses}")
+    logger.info(f"eval_losses: {eval_losses}")

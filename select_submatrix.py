@@ -66,6 +66,8 @@ def main():
     save_submatrix(selected_submatrix, submatrix_file_path)
     logger.info(f"Submatrix file is saved to {submatrix_file_path}")
 
+    print_loss_through_whole_training(trainer.state.log_history)
+
 
 if __name__ == "__main__":
     main()

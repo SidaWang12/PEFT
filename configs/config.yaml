@@ -1,13 +1,13 @@
 enable_analysis: true
 
-learning_rate: 0.2e-6
+learning_rate: 1e-6
 output_dir: logs
 per_device_train_batch_size: 16
 # per_device_eval_batch_size: 16
 gradient_accumulation_steps: 1
 logging_steps: 1
 # num_train_epochs: 0.5
-max_steps: 500
+max_steps: 5
 # save_steps: 5
 
 dataset_name: lmms-lab/Math10K
@@ -22,7 +22,7 @@ max_length: 1024
 torch_dtype: bfloat16
 # attn_implementation: "flash_attention_2"
 do_eval: true
-eval_steps: 10
+eval_steps: 2
 eval_strategy: "steps"
 
 # gradient_checkpointing doesn't work with SMT.

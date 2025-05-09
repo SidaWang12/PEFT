@@ -8,7 +8,7 @@ from trainers.peft_trainer import PeftTrainer, PeftTrainerMode
 from utils.monitoring import TrainingMonitor
 from utils.logging import logger
 from model_and_config_utils.peft_config import PeftConfig
-from model_and_config_utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
+from model_and_config_utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
 
 
 def main():
@@ -64,6 +64,8 @@ def main():
     trainer.train()
     TrainingMonitor.memory_stats()
     logger.info("Training completed successfully")
+
+    print_loss_through_whole_training(trainer.state.log_history)
 
 
 def load_selected_submatrix(file_path: str) -> dict:
