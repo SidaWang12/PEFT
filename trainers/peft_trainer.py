@@ -1,6 +1,6 @@
 import re
 from typing import Any, Callable, Dict, Optional, Tuple, Union
-from helpers.types import LayerLevelGradType
+from utils.types import LayerLevelGradType
 from trl.trainer.sft_trainer import SFTTrainer, SFTConfig
 import torch
 from torch import nn
@@ -19,6 +19,13 @@ from transformers.trainer_callback import TrainerCallback
 from transformers.trainer_utils import EvalPrediction
 from datasets import Dataset, IterableDataset
 
+from enum import Enum, auto
+
+
+class PeftTrainerMode(Enum):
+    SelectSubmatrixMode = auto()
+    TrainingMode = auto()
+
 
 class PeftTrainer(SFTTrainer):
     def __init__(
@@ -32,6 +39,7 @@ class PeftTrainer(SFTTrainer):
                                          BaseImageProcessor,
                                          FeatureExtractionMixin,
                                          ProcessorMixin]] = None,
+        mode: PeftTrainerMode = None,
         compute_loss_func: Optional[Callable] = None,
         compute_metrics: Optional[Callable[[EvalPrediction], dict]] = None,
         callbacks: Optional[list[TrainerCallback]] = None,
@@ -53,6 +61,7 @@ class PeftTrainer(SFTTrainer):
                          preprocess_logits_for_metrics, peft_config,
                          formatting_func)
         self.warmup_grads = {}
+        self.mode = mode
 
     def training_step(self,
                       model: nn.Module,
@@ -60,13 +69,14 @@ class PeftTrainer(SFTTrainer):
                       num_items_in_batch=None) -> torch.Tensor:
         loss = super().training_step(model, inputs, num_items_in_batch)
 
-        _get_warmup_grads(model, self.warmup_grads)
+        if self.mode == PeftTrainerMode.SelectSubmatrixMode:
+            _get_warmup_grads(model, self.warmup_grads)
 
         return loss
-    
 
-def _get_warmup_grads(
-    model: torch.nn.Module, warmup_grads: LayerLevelGradType) -> None:
+
+def _get_warmup_grads(model: torch.nn.Module,
+                      warmup_grads: LayerLevelGradType) -> None:
     """
     Accumulate warmup gradients for MLP layers across steps.
     """

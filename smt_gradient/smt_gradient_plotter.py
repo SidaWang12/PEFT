@@ -4,7 +4,7 @@ from typing import Dict, List
 from matplotlib import pyplot as plt
 import numpy as np
 
-from helpers.types import LayerLevelGradType
+from utils.types import LayerLevelGradType
 
 
 def plot_layer_level_grads(grad_statistics: LayerLevelGradType,

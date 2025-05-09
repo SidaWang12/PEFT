@@ -2,13 +2,14 @@ from typing import Any, Dict, Optional
 from datasets import Dataset, load_dataset
 from trl import TrlParser, ModelConfig, ScriptArguments
 
-from helpers.logging import logger
+from utils.logging import logger
 
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     PreTrainedTokenizer,
 )
+
 
 def load_and_configure_tokenizer(
         model_args: ModelConfig) -> PreTrainedTokenizer:
@@ -25,8 +26,8 @@ def load_and_configure_tokenizer(
 
 
 def prepare_datasets(dataset_name: str, dataset_config: Optional[str],
-                      train_split: str, seed,
-                      test_set_percentage: float) -> Dict[str, Dataset]:
+                     train_split: str, seed,
+                     test_set_percentage: float) -> Dict[str, Dataset]:
     """Load and split the dataset."""
     def preprocess_function(example: Dict[str, Any]) -> Dict[str, Any]:
         return {
@@ -43,6 +44,6 @@ def prepare_datasets(dataset_name: str, dataset_config: Optional[str],
 
 
 def initialize_model(model_name: str,
-                      model_kwargs: Dict[str, Any]) -> AutoModelForCausalLM:
+                     model_kwargs: Dict[str, Any]) -> AutoModelForCausalLM:
     logger.info("loading model...")
     return AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)

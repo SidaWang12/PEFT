@@ -4,12 +4,11 @@ import json
 import math
 import os
 import heapq
-from typing import Dict, Tuple
 import torch
-from helpers.logging import logger
-from helpers.types import LayerLevelGradType, SelectedSubmatrixCoordinatesType
+from utils.logging import logger
+from utils.types import LayerLevelGradType, SelectedSubmatrixCoordinatesType
 from smt_gradient.smt_gradient_plotter import plot_layer_level_grads, plot_gradient_per_block_distribution
-from transformers import  AutoModelForCausalLM
+from transformers import AutoModelForCausalLM
 
 
 def process_and_select_submatrix(model, warmup_grads, global_step, enable_analysis,
@@ -20,8 +19,7 @@ def process_and_select_submatrix(model, warmup_grads, global_step, enable_analys
 
     warup_abs_grads = {}
     for key in warmup_grads:
-        warup_abs_grads[key] = warmup_grads[key].abs(
-        ) / global_step
+        warup_abs_grads[key] = warmup_grads[key].abs() / global_step
 
     analysis_plot_path = os.path.join(output_dir, 'plots')
 
@@ -30,10 +28,10 @@ def process_and_select_submatrix(model, warmup_grads, global_step, enable_analys
 
     selected_submatrix = _select_submatrix_based_on_grads(
         model, warup_abs_grads, block_dimension,
-        downsample_attention_blocks_ratio, enable_analysis,
-        analysis_plot_path)
+        downsample_attention_blocks_ratio, enable_analysis, analysis_plot_path)
 
     return selected_submatrix
+
 
 def save_submatrix(selected_submatrix, submatrix_file_path):
     with open(submatrix_file_path, "w") as f:
@@ -42,6 +40,7 @@ def save_submatrix(selected_submatrix, submatrix_file_path):
                   f,
                   separators=(",", ":"),
                   indent=None)
+
 
 def _get_gcd_from_weight_shape(model: AutoModelForCausalLM) -> int:
     """
@@ -55,8 +54,8 @@ def _get_gcd_from_weight_shape(model: AutoModelForCausalLM) -> int:
     return reduce(math.gcd, all_dims)
 
 
-def _analyze_layer_level_grads(
-        output_dir: str, warmup_grads: LayerLevelGradType) -> None:
+def _analyze_layer_level_grads(output_dir: str,
+                               warmup_grads: LayerLevelGradType) -> None:
     """
     Analyze and plot per-layer gradient statistics.
     """
@@ -81,10 +80,10 @@ def _mean_abs(grad_tensor: torch.Tensor) -> torch.Tensor:
 
 
 def _select_submatrix_based_on_grads(
-    model: torch.nn.Module, warup_abs_grads: LayerLevelGradType,
-    block_dimension: int, downsample_attention_blocks_ratio: float,
-    enable_analysis: bool, analysis_plot_path: str
-) -> SelectedSubmatrixCoordinatesType:
+        model: torch.nn.Module, warup_abs_grads: LayerLevelGradType,
+        block_dimension: int, downsample_attention_blocks_ratio: float,
+        enable_analysis: bool,
+        analysis_plot_path: str) -> SelectedSubmatrixCoordinatesType:
     targeted_module_dims = {}
 
     TARGET_MODULE_NAMES = {

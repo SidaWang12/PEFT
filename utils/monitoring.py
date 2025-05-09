@@ -1,6 +1,6 @@
 import torch
 from transformers import TrainerCallback
-from helpers.logging import logger
+from utils.logging import logger
 
 
 class TrainingMonitor:
