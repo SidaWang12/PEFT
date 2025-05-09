@@ -12,7 +12,7 @@ from transformers import AutoModelForCausalLM
 
 
 def process_and_select_submatrix(model, warmup_grads, global_step, enable_analysis,
-                                 output_dir, downsample_attention_blocks_ratio) -> \
+                                 output_dir, downsample_mlp_blocks_ratio) -> \
                                  SelectedSubmatrixCoordinatesType:
     block_dimension = _get_gcd_from_weight_shape(model)
     logger.info(f"block_size is {block_dimension}")
@@ -28,7 +28,7 @@ def process_and_select_submatrix(model, warmup_grads, global_step, enable_analys
 
     selected_submatrix = _select_submatrix_based_on_grads(
         model, warup_abs_grads, block_dimension,
-        downsample_attention_blocks_ratio, enable_analysis, analysis_plot_path)
+        downsample_mlp_blocks_ratio, enable_analysis, analysis_plot_path)
 
     return selected_submatrix
 
@@ -81,7 +81,7 @@ def _mean_abs(grad_tensor: torch.Tensor) -> torch.Tensor:
 
 def _select_submatrix_based_on_grads(
         model: torch.nn.Module, warup_abs_grads: LayerLevelGradType,
-        block_dimension: int, downsample_attention_blocks_ratio: float,
+        block_dimension: int, downsample_mlp_blocks_ratio: float,
         enable_analysis: bool,
         analysis_plot_path: str) -> SelectedSubmatrixCoordinatesType:
     targeted_module_dims = {}
@@ -110,7 +110,7 @@ def _select_submatrix_based_on_grads(
 
     logger.info(f"num_total_blocks {num_total_blocks}")
     num_selected_blocks = int(num_total_blocks *
-                              downsample_attention_blocks_ratio)
+                              downsample_mlp_blocks_ratio)
     logger.info(f"num_selected_blocks {num_selected_blocks}")
 
     block_means = {}

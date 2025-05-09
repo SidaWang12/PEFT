@@ -11,9 +11,9 @@ class PeftConfig(SFTConfig):
         default=False,
         metadata={"help": "whether or not do gradient analysis."},
     )
-    downsample_attention_blocks_ratio: float = field(
-        default=0.005,
-        metadata={"help": "downsample_attention_blocks_ratio."},
+    downsample_mlp_blocks_ratio: float = field(
+        default=0.05,
+        metadata={"help": "downsample_mlp_blocks_ratio."},
     )
     test_set_percentage: float = field(
         default=0.2,

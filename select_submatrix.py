@@ -6,7 +6,7 @@ from utils.monitoring import TrainingMonitor
 from utils.logging import logger
 from smt_gradient.smt_gradient_selector import process_and_select_submatrix, save_submatrix
 from model_and_config_utils.peft_config import PeftConfig
-from model_and_config_utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
+from model_and_config_utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
 
 
 def main():
@@ -58,7 +58,7 @@ def main():
     selected_submatrix = process_and_select_submatrix(
         model, trainer.warmup_grads, trainer.state.global_step,
         training_args.enable_analysis, training_args.output_dir,
-        training_args.downsample_attention_blocks_ratio)
+        training_args.downsample_mlp_blocks_ratio)
     logger.info(f"selected_ranked_block {selected_submatrix}")
 
     submatrix_file_path = os.path.join(training_args.output_dir,
