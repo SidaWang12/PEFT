@@ -3,16 +3,18 @@ from functools import reduce
 import json
 import math
 import os
-import re
 import heapq
-from typing import DefaultDict, Dict, List, Tuple
+from typing import Dict, Tuple
 import torch
 from helpers.logging import logger
+from helpers.types import SelectedSubmatrixType
 from smt_gradient.smt_gradient_plotter import plot_layer_level_grads, plot_gradient_per_block_distribution
 from transformers import  AutoModelForCausalLM
 
 
-def process_and_select_submatrix(model, warmup_grads, global_step, enable_analysis, output_dir, downsample_attention_blocks_ratio):
+def process_and_select_submatrix(model, warmup_grads, global_step, enable_analysis,
+                                 output_dir, downsample_attention_blocks_ratio) -> \
+                                 SelectedSubmatrixType:
     block_dimension = _get_gcd_from_weight_shape(model)
     logger.info(f"block_size is {block_dimension}")
 
@@ -84,7 +86,7 @@ def _select_submatrix_based_on_grads(
                                                   torch.Tensor],
     block_dimension: int, downsample_attention_blocks_ratio: float,
     enable_analysis: bool, analysis_plot_path: str
-) -> DefaultDict[Tuple[str, int], List[Tuple[int, int]]]:
+) -> SelectedSubmatrixType:
     targeted_module_dims = {}
 
     TARGET_MODULE_NAMES = {
