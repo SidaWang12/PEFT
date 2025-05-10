@@ -2,6 +2,7 @@ import re
 
 from transformers import AutoModelForCausalLM
 
+from utils.get_module_names import get_module_name
 from utils.types import SelectedSubmatrixType
 
 
@@ -11,7 +12,7 @@ def model_freeze_unselected_matrix_layer(
     pattern = re.compile(r'model\.layers\.(\d+)\.')
     for name, param in model.named_parameters():
         if "mlp" in name:
-            module_name = 'gate_proj' if 'gate_proj' in name else 'up_proj' if 'up_proj' in name else 'down_proj'
+            module_name = get_module_name(name, "mlp")
             match = pattern.search(name)
             layer_number = int(match.group(1)) if match else None
             if (module_name, layer_number) in selected_mlp_parameters.keys():
@@ -20,9 +21,7 @@ def model_freeze_unselected_matrix_layer(
                 param.requires_grad = False
 
         elif "self_attn" in name:
-            # module_name = 'q_proj' if 'q_proj' in name else 'k_proj' if 'k_proj' in name else 'v_proj' if 'v_proj' in name else None
-            module_name = 'q_proj' if 'q_proj' in name else 'k_proj' if 'k_proj' in name else 'v_proj' if 'v_proj' in name else 'o_proj' if 'o_proj' in name else None
-
+            module_name = get_module_name(name, "attention")
             match = pattern.search(name)
             layer_number = int(match.group(1)) if match else None
             if (module_name,

@@ -1,5 +1,6 @@
 import re
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
+from utils.get_module_names import get_module_name
 from utils.types import LayerLevelGradType
 from trl.trainer.sft_trainer import SFTTrainer, SFTConfig
 import torch
@@ -94,24 +95,12 @@ def _get_warmup_mlp_grads(model: torch.nn.Module,
         layer_number = int(match.group(1)) if match else None
         if downsample_mlp_blocks_ratio >= 0 and 'mlp' in name and 'weight' in name:
             grad = safe_get_full_grad(param)  # (hidden_dim, head_dim)
-            PROJ_MAPPING = {
-                'gate_proj': 'gate_proj',
-                'up_proj': 'up_proj',
-                'down_proj': 'down_proj',
-            }
-
-            module_name = next((proj for proj in PROJ_MAPPING if proj in name),
-                               None)
-            if module_name is None:
-                raise ValueError(
-                    f"Layer name '{name}' must contain one of {sorted(PROJ_MAPPING)}. "
-                    "Check your layer naming convention.")
+            module_name = get_module_name(name, "mlp")
             key = (module_name, layer_number)
 
             if key not in warmup_mlp_grads:
                 # warmup_mlp_grads[(module_name, layer_number)] = grad.detach().to(torch.float32)
                 warmup_mlp_grads[key] = grad.detach().cpu().to(torch.float32)
-
             else:
                 warmup_mlp_grads[key] += grad.detach().cpu().to(torch.float32)
                 # warmup_mlp_grads[(module_name, layer_number)] += grad.detach().to(torch.float32)
@@ -131,22 +120,9 @@ def _get_warmup_attention_grads(
         layer_number = int(match.group(1)) if match else None
         if downsample_attention_blocks_ratio >= 0 and 'self_attn' in name and 'weight' in name:
             grad = safe_get_full_grad(param)  # (hidden_dim, head_dim)
-            PROJ_MAPPING = {
-                'q_proj': 'q_proj',
-                'k_proj': 'k_proj',
-                'v_proj': 'v_proj',
-                'o_proj': 'o_proj'
-            }
-            module_name = next((proj for proj in PROJ_MAPPING if proj in name),
-                               None)
-            if module_name is None:
-                raise ValueError(
-                    f"Layer name '{name}' must contain one of {sorted(PROJ_MAPPING)}. "
-                    "Check your layer naming convention.")
-
+            module_name = get_module_name(name, "attention")
             key = (module_name, layer_number)
 
-            #defaultdict(torch.float32)
             if key not in warmup_attention_grads:
                 warmup_attention_grads[key] = grad.detach().cpu().to(
                     torch.float32)
