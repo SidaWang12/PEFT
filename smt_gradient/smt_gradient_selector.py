@@ -61,20 +61,20 @@ def _get_gcd_from_weight_shape(model: AutoModelForCausalLM) -> int:
 
 
 def _analyze_layer_level_grads(output_dir: str,
-                               warmup_grads: LayerLevelGradType,
+                               warup_abs_grads: LayerLevelGradType,
                                mlp_or_attention: str) -> None:
     """
     Analyze and plot per-layer gradient statistics.
     """
     grad_statistics = {}
-    for key in warmup_grads:
-        grad_statistics[key] = warmup_grads[key].mean()
+    for key in warup_abs_grads:
+        grad_statistics[key] = warup_abs_grads[key].mean()
     plot_layer_level_grads(grad_statistics, output_dir, mlp_or_attention, "mean")
 
     grad_statistics = {}
-    for key in warmup_grads:
-        grad_statistics[key] = warmup_grads[key].var(
-        ) / warmup_grads[key].mean()
+    for key in warup_abs_grads:
+        grad_statistics[key] = warup_abs_grads[key].var(
+        ) / warup_abs_grads[key].mean()
     plot_layer_level_grads(grad_statistics, output_dir, mlp_or_attention, "var-divide-by-mean")
 
 
