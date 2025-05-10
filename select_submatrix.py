@@ -5,7 +5,7 @@ from trl import TrlParser, ModelConfig, ScriptArguments
 from trainers.peft_trainer import PeftTrainerMode, PeftTrainer
 from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
 from utils.logging import logger
-from smt_gradient.smt_gradient_selector import process_and_select_submatrix
+from smt_gradient.smt_gradient_selector import select_submatrix
 from model_and_config_utils.peft_config import PeftConfig
 from model_and_config_utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
 
@@ -66,18 +66,18 @@ def main():
 
     selected_mlp_submatrix = {}
     if training_args.downsample_mlp_blocks_ratio >= 0:
-        selected_mlp_submatrix = process_and_select_submatrix(
+        selected_mlp_submatrix = select_submatrix(
             model, trainer.warmup_mlp_grads, trainer.state.global_step,
             training_args.enable_analysis, training_args.output_dir,
-            training_args.downsample_mlp_blocks_ratio)
+            training_args.downsample_mlp_blocks_ratio, "mlp")
     logger.info(f"selected_mlp_submatrix {selected_mlp_submatrix}")
 
     selected_attention_submatrix = {}
     if training_args.downsample_attention_blocks_ratio >= 0:
-        selected_attention_submatrix = process_and_select_submatrix(
+        selected_attention_submatrix = select_submatrix(
             model, trainer.warmup_attention_grads, trainer.state.global_step,
             training_args.enable_analysis, training_args.output_dir,
-            training_args.downsample_attention_blocks_ratio)
+            training_args.downsample_attention_blocks_ratio, "attention")
     logger.info(f"selected_attention_submatrix {selected_attention_submatrix}")
 
     submatrix_file_path = os.path.join(training_args.output_dir,

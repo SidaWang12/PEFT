@@ -1,4 +1,4 @@
-enable_analysis: false
+enable_analysis: true
 downsample_mlp_blocks_ratio: 0.005
 downsample_attention_blocks_ratio: 0.006
 

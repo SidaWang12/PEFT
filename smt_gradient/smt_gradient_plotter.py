@@ -8,15 +8,19 @@ from utils.types import LayerLevelGradType
 
 
 def plot_layer_level_grads(grad_statistics: LayerLevelGradType,
-                           output_dir: str, statistical_method: str) -> None:
+                           output_dir: str, mlp_or_attention: str, statistical_method: str) -> None:
     os.makedirs(output_dir, exist_ok=True)
 
     # Extract layer numbers and gradients for each projection type
     layers = sorted(set(layer for (_, layer) in grad_statistics.keys()))
 
     # Prepare data for plotting
-    proj_names = ['gate_proj', 'up_proj', 'down_proj']
-    colors = ['blue', 'green', 'red']
+    if mlp_or_attention == "mlp":
+        proj_names = ['gate_proj', 'up_proj', 'down_proj']
+        colors = ['blue', 'green', 'red']
+    else:
+        proj_names = ['q_proj', 'k_proj', 'v_proj', 'o_proj']
+        colors = ['blue', 'green', 'red', 'black']
 
     # Create figure with 3 subplots
     _, axes = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
