@@ -23,4 +23,3 @@ class GPUMemoryStatsCallback(TrainerCallback):
             logger.info(f"[Step {state.global_step}] "
                         f"Memory - Allocated: {allocated:.2f} GB, "
                         f"Reserved: {reserved:.2f} GB")
-

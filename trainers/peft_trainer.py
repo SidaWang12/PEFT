@@ -60,8 +60,11 @@ class PeftTrainer(SFTTrainer):
                          optimizer_cls_and_kwargs,
                          preprocess_logits_for_metrics, peft_config,
                          formatting_func)
-        self.warmup_grads = {}
+        self.warmup_mlp_grads = {}
+        self.warmup_attention_grads = {}
         self.mode = mode
+        self.downsample_mlp_blocks_ratio = args.downsample_mlp_blocks_ratio
+        self.downsample_attention_blocks_ratio = args.downsample_attention_blocks_ratio
 
     def training_step(self,
                       model: nn.Module,
@@ -70,13 +73,17 @@ class PeftTrainer(SFTTrainer):
         loss = super().training_step(model, inputs, num_items_in_batch)
 
         if self.mode == PeftTrainerMode.SelectSubmatrixMode:
-            _get_warmup_grads(model, self.warmup_grads)
+            _get_warmup_mlp_grads(model, self.warmup_mlp_grads,
+                                  self.downsample_mlp_blocks_ratio)
+            _get_warmup_attention_grads(model, self.warmup_attention_grads,
+                                        self.downsample_attention_blocks_ratio)
 
         return loss
 
 
-def _get_warmup_grads(model: torch.nn.Module,
-                      warmup_grads: LayerLevelGradType) -> None:
+def _get_warmup_mlp_grads(model: torch.nn.Module,
+                          warmup_mlp_grads: LayerLevelGradType,
+                          downsample_mlp_blocks_ratio: float) -> None:
     """
     Accumulate warmup gradients for MLP layers across steps.
     """
@@ -85,17 +92,65 @@ def _get_warmup_grads(model: torch.nn.Module,
     for name, param in model.named_parameters():
         match = pattern.search(name)
         layer_number = int(match.group(1)) if match else None
-        if 'mlp' in name and 'weight' in name:
+        if downsample_mlp_blocks_ratio >= 0 and 'mlp' in name and 'weight' in name:
             grad = safe_get_full_grad(param)  # (hidden_dim, head_dim)
-            module_name = 'gate_proj' if 'gate_proj' in name else 'up_proj' if 'up_proj' in name else 'down_proj'
+            PROJ_MAPPING = {
+                'gate_proj': 'gate_proj',
+                'up_proj': 'up_proj',
+                'down_proj': 'down_proj',
+            }
+
+            module_name = next((proj for proj in PROJ_MAPPING if proj in name),
+                               None)
+            if module_name is None:
+                raise ValueError(
+                    f"Layer name '{name}' must contain one of {sorted(PROJ_MAPPING)}. "
+                    "Check your layer naming convention.")
+            key = (module_name, layer_number)
+
+            if key not in warmup_mlp_grads:
+                # warmup_mlp_grads[(module_name, layer_number)] = grad.detach().to(torch.float32)
+                warmup_mlp_grads[key] = grad.detach().cpu().to(torch.float32)
+
+            else:
+                warmup_mlp_grads[key] += grad.detach().cpu().to(torch.float32)
+                # warmup_mlp_grads[(module_name, layer_number)] += grad.detach().to(torch.float32)
+                # del grad
+
+
+def _get_warmup_attention_grads(
+        model: torch.nn.Module, warmup_attention_grads: LayerLevelGradType,
+        downsample_attention_blocks_ratio: float) -> None:
+    """
+    Accumulate warmup gradients for attention layers across steps.
+    """
+    pattern = re.compile(r'model\.layers\.(\d+)\.')
+
+    for name, param in model.named_parameters():
+        match = pattern.search(name)
+        layer_number = int(match.group(1)) if match else None
+        if downsample_attention_blocks_ratio >= 0 and 'self_attn' in name and 'weight' in name:
+            grad = safe_get_full_grad(param)  # (hidden_dim, head_dim)
+            PROJ_MAPPING = {
+                'q_proj': 'q_proj',
+                'k_proj': 'k_proj',
+                'v_proj': 'v_proj',
+                'o_proj': 'o_proj'
+            }
+            module_name = next((proj for proj in PROJ_MAPPING if proj in name),
+                               None)
+            if module_name is None:
+                raise ValueError(
+                    f"Layer name '{name}' must contain one of {sorted(PROJ_MAPPING)}. "
+                    "Check your layer naming convention.")
+
             key = (module_name, layer_number)
 
             #defaultdict(torch.float32)
-            if key not in warmup_grads:
-                # warmup_grads[(module_name, layer_number)] = grad.detach().to(torch.float32)
-                warmup_grads[key] = grad.detach().cpu().to(torch.float32)
+            if key not in warmup_attention_grads:
+                warmup_attention_grads[key] = grad.detach().cpu().to(
+                    torch.float32)
 
             else:
-                warmup_grads[key] += grad.detach().cpu().to(torch.float32)
-                # warmup_grads[(module_name, layer_number)] += grad.detach().to(torch.float32)
-                # del grad
+                warmup_attention_grads[key] += grad.detach().cpu().to(
+                    torch.float32)
