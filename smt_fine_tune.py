@@ -1,7 +1,7 @@
 from transformers import AutoModelForCausalLM
 import json
 import os
-from utils.types import SelectedSubmatrixType
+from utils.types_and_structs import SelectedSubmatrixType
 from smt_gradient.model_sparsifier import model_freeze_unselected_matrix_layer
 from trl import TrlParser, ModelConfig, ScriptArguments
 

@@ -1,5 +1,6 @@
 import json
 import os
+from utils.types_and_structs import SMTBlockType
 from trl import TrlParser, ModelConfig, ScriptArguments
 
 from trainers.peft_trainer import PeftTrainerMode, PeftTrainer
@@ -69,7 +70,7 @@ def main():
         selected_mlp_submatrix = select_submatrix(
             model, trainer.warmup_mlp_grads, trainer.state.global_step,
             training_args.enable_analysis, training_args.output_dir,
-            training_args.downsample_mlp_blocks_ratio, "mlp")
+            training_args.downsample_mlp_blocks_ratio, SMTBlockType.MLP)
     logger.info(f"selected_mlp_submatrix {selected_mlp_submatrix}")
 
     selected_attention_submatrix = {}
@@ -77,7 +78,7 @@ def main():
         selected_attention_submatrix = select_submatrix(
             model, trainer.warmup_attention_grads, trainer.state.global_step,
             training_args.enable_analysis, training_args.output_dir,
-            training_args.downsample_attention_blocks_ratio, "attention")
+            training_args.downsample_attention_blocks_ratio, SMTBlockType.ATTENTION)
     logger.info(f"selected_attention_submatrix {selected_attention_submatrix}")
 
     submatrix_file_path = os.path.join(training_args.output_dir,

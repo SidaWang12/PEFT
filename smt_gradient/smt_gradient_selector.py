@@ -6,7 +6,7 @@ import heapq
 from typing import Dict, List
 import torch
 from utils.logging import logger
-from utils.types import LayerLevelGradType, SelectedSubmatrixType
+from utils.types_and_structs import LayerLevelGradType, SMTBlockType, SelectedSubmatrixType
 from smt_gradient.smt_gradient_plotter import plot_layer_level_grads, plot_gradient_per_block_distribution
 from transformers import AutoModelForCausalLM
 
@@ -15,12 +15,12 @@ def select_submatrix(
         model: AutoModelForCausalLM, warmup_grads: LayerLevelGradType,
         global_step: int, enable_analysis: bool, output_dir: str,
         downsample_blocks_ratio: float,
-        mlp_or_attention: str) -> SelectedSubmatrixType:
+        mlp_or_attention: SMTBlockType) -> SelectedSubmatrixType:
     warup_abs_grads = {}
     for key in warmup_grads:
         warup_abs_grads[key] = warmup_grads[key].abs() / global_step
 
-    analysis_plot_path = os.path.join(output_dir, f'{mlp_or_attention}_plots')
+    analysis_plot_path = os.path.join(output_dir, f'{mlp_or_attention.name}_plots')
     os.makedirs(analysis_plot_path, exist_ok=True)
 
     if enable_analysis:
@@ -59,7 +59,7 @@ def _get_gcd_from_weight_shape(model: AutoModelForCausalLM) -> int:
 
 def _analyze_layer_level_grads(output_dir: str,
                                warup_abs_grads: LayerLevelGradType,
-                               mlp_or_attention: str) -> None:
+                               mlp_or_attention: SMTBlockType) -> None:
     """
     Analyze and plot per-layer gradient statistics.
     """

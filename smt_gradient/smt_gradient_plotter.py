@@ -4,11 +4,11 @@ from typing import Dict, List
 from matplotlib import pyplot as plt
 import numpy as np
 
-from utils.types import LayerLevelGradType
+from utils.types_and_structs import LayerLevelGradType, SMTBlockType
 
 
 def plot_layer_level_grads(grad_statistics: LayerLevelGradType,
-                           output_dir: str, mlp_or_attention: str,
+                           output_dir: str, mlp_or_attention: SMTBlockType,
                            statistical_method: str) -> None:
     os.makedirs(output_dir, exist_ok=True)
 
@@ -16,7 +16,7 @@ def plot_layer_level_grads(grad_statistics: LayerLevelGradType,
     layers = sorted(set(layer for (_, layer) in grad_statistics.keys()))
 
     # Prepare data for plotting
-    if mlp_or_attention == "mlp":
+    if mlp_or_attention == SMTBlockType.MLP:
         proj_names = ['gate_proj', 'up_proj', 'down_proj']
         colors = ['blue', 'green', 'red']
     else:

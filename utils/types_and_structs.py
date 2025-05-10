@@ -1,3 +1,4 @@
+from enum import Enum, auto
 from typing import DefaultDict, Dict, Tuple, List
 
 import torch
@@ -8,3 +9,7 @@ SelectedSubmatrixType = DefaultDict[Tuple[str, int],
 
 # Example: {('gate_proj', 0): tensor([[...]]), ...}
 LayerLevelGradType = Dict[Tuple[str, int], torch.Tensor]
+
+class SMTBlockType(Enum):
+    MLP = auto()
+    ATTENTION = auto()

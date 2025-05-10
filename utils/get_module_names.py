@@ -1,6 +1,9 @@
 
-def get_module_name(name: str, mlp_or_attention: str) -> str:
-    if mlp_or_attention == "attention":
+from utils.types_and_structs import SMTBlockType
+
+
+def get_module_name(name: str, smt_block_type: SMTBlockType) -> str:
+    if smt_block_type == SMTBlockType.ATTENTION:
         PROJ_MAPPING = {
                 'q_proj': 'q_proj',
                 'k_proj': 'k_proj',
