@@ -1,6 +1,7 @@
-import ast
+from transformers import AutoModelForCausalLM
 import json
 import os
+from utils.types import SelectedSubmatrixType
 from smt_gradient.model_sparsifier import model_freeze_unselected_matrix_layer
 from trl import TrlParser, ModelConfig, ScriptArguments
 
@@ -42,9 +43,11 @@ def main():
     selected_mlp_submatrix, selected_attention_submatrix = load_selected_submatrix(
         os.path.join(training_args.output_dir, 'selected_blocks.json'))
     logger.info(f"selected_mlp_submatrix: {selected_mlp_submatrix}")
-    logger.info(f"selected_attention_submatrix: {selected_attention_submatrix}")
+    logger.info(
+        f"selected_attention_submatrix: {selected_attention_submatrix}")
 
-    model = model_freeze_unselected_matrix_layer(model, selected_mlp_submatrix, selected_attention_submatrix)
+    model = model_freeze_unselected_matrix_layer(model, selected_mlp_submatrix,
+                                                 selected_attention_submatrix)
 
     logger.info("Print the requres_grad of model weight.")
     for name, param in model.named_parameters():
@@ -54,14 +57,13 @@ def main():
 
     # overfit_small_data = datasets["train"].select(range(100))
     # Initialize trainer
-    trainer = PeftTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=datasets["train"],
-        eval_dataset=datasets["test"],
-        processing_class=tokenizer,
-        mode=PeftTrainerMode.TrainingMode,
-        callbacks=[GPUMemoryStatsCallback()])
+    trainer = PeftTrainer(model=model,
+                          args=training_args,
+                          train_dataset=datasets["train"],
+                          eval_dataset=datasets["test"],
+                          processing_class=tokenizer,
+                          mode=PeftTrainerMode.TrainingMode,
+                          callbacks=[GPUMemoryStatsCallback()])
 
     # Log initial memory stats
     TrainingMonitor.memory_stats()
@@ -75,19 +77,26 @@ def main():
     print_loss_through_whole_training(trainer.state.log_history)
 
 
-def load_selected_submatrix(selected_submatrix_file):
+def load_selected_submatrix(selected_submatrix_file: str) -> \
+        tuple[SelectedSubmatrixType, SelectedSubmatrixType]:
     """Load two submatrices from a JSON file"""
     with open(selected_submatrix_file, 'r') as f:
         data = json.load(f)
-    
+
     # Convert keys back to original type if they were non-string keys
-    selected_mlp_submatrix = {eval(k): v for k, v in data["selected_mlp_submatrix"].items()}
-    selected_attention_submatrix = {eval(k): v for k, v in data["selected_attention_submatrix"].items()}
+    selected_mlp_submatrix = {
+        eval(k): v
+        for k, v in data["selected_mlp_submatrix"].items()
+    }
+    selected_attention_submatrix = {
+        eval(k): v
+        for k, v in data["selected_attention_submatrix"].items()
+    }
 
     return selected_mlp_submatrix, selected_attention_submatrix
 
 
-def trainable_parameters_statistics(model):
+def trainable_parameters_statistics(model: AutoModelForCausalLM):
     # print matrix sparsity trainable parameters
     total_num = sum(p.numel() for p in model.parameters())
     selected_num = sum(p.numel() for p in model.parameters()

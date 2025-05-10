@@ -8,7 +8,8 @@ from utils.types import LayerLevelGradType
 
 
 def plot_layer_level_grads(grad_statistics: LayerLevelGradType,
-                           output_dir: str, mlp_or_attention: str, statistical_method: str) -> None:
+                           output_dir: str, mlp_or_attention: str,
+                           statistical_method: str) -> None:
     os.makedirs(output_dir, exist_ok=True)
 
     # Extract layer numbers and gradients for each projection type

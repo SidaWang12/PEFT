@@ -6,20 +6,16 @@ import heapq
 from typing import Dict, List
 import torch
 from utils.logging import logger
-from utils.types import LayerLevelGradType, SelectedSubmatrixCoordinatesType
+from utils.types import LayerLevelGradType, SelectedSubmatrixType
 from smt_gradient.smt_gradient_plotter import plot_layer_level_grads, plot_gradient_per_block_distribution
 from transformers import AutoModelForCausalLM
 
 
 def select_submatrix(
-        model: AutoModelForCausalLM,
-        warmup_grads: LayerLevelGradType,
-        global_step: int,
-        enable_analysis: bool,
-        output_dir: str,
+        model: AutoModelForCausalLM, warmup_grads: LayerLevelGradType,
+        global_step: int, enable_analysis: bool, output_dir: str,
         downsample_blocks_ratio: float,
-        mlp_or_attention: str
-    )   ->  SelectedSubmatrixCoordinatesType:
+        mlp_or_attention: str) -> SelectedSubmatrixType:
     warup_abs_grads = {}
     for key in warmup_grads:
         warup_abs_grads[key] = warmup_grads[key].abs() / global_step
@@ -28,7 +24,8 @@ def select_submatrix(
     os.makedirs(analysis_plot_path, exist_ok=True)
 
     if enable_analysis:
-        _analyze_layer_level_grads(analysis_plot_path, warup_abs_grads, mlp_or_attention)
+        _analyze_layer_level_grads(analysis_plot_path, warup_abs_grads,
+                                   mlp_or_attention)
 
     block_dimension = _get_gcd_from_weight_shape(model)
     logger.info(f"block_size is {block_dimension}")
@@ -69,13 +66,15 @@ def _analyze_layer_level_grads(output_dir: str,
     grad_statistics = {}
     for key in warup_abs_grads:
         grad_statistics[key] = warup_abs_grads[key].mean()
-    plot_layer_level_grads(grad_statistics, output_dir, mlp_or_attention, "mean")
+    plot_layer_level_grads(grad_statistics, output_dir, mlp_or_attention,
+                           "mean")
 
     grad_statistics = {}
     for key in warup_abs_grads:
         grad_statistics[key] = warup_abs_grads[key].var(
         ) / warup_abs_grads[key].mean()
-    plot_layer_level_grads(grad_statistics, output_dir, mlp_or_attention, "var-divide-by-mean")
+    plot_layer_level_grads(grad_statistics, output_dir, mlp_or_attention,
+                           "var-divide-by-mean")
 
 
 def _mean_abs(grad_tensor: torch.Tensor) -> torch.Tensor:
@@ -109,7 +108,8 @@ def _calculate_targeted_module_dims(model: AutoModelForCausalLM, block_dimension
     return targeted_module_dims
 
 
-def _get_total_num_blocks(model: AutoModelForCausalLM, block_dimension: int):
+def _get_total_num_blocks(model: AutoModelForCausalLM,
+                          block_dimension: int) -> int:
     num_total_blocks = 0
     for _, param in model.named_parameters():
         if isinstance(param, torch.Tensor) and param.ndim == 2:
@@ -119,8 +119,9 @@ def _get_total_num_blocks(model: AutoModelForCausalLM, block_dimension: int):
     return int(num_total_blocks)
 
 
-def _calculate_mean_grad_per_block(warup_abs_grads, targeted_module_dims,
-                                   block_dimension):
+def _calculate_mean_grad_per_block(warup_abs_grads: LayerLevelGradType,
+                                   targeted_module_dims: Dict[str, List[int]],
+                                   block_dimension: int) -> Dict:
     block_means = {}
     for key, grad in warup_abs_grads.items():
         targeted_module_name = key[0]
@@ -137,10 +138,9 @@ def _calculate_mean_grad_per_block(warup_abs_grads, targeted_module_dims,
 def _select_submatrix_based_on_grads(
         downsample_blocks_ratio: float, enable_analysis: bool,
         analysis_plot_path: str, num_total_blocks,
-        block_means) -> SelectedSubmatrixCoordinatesType:
+        block_means) -> SelectedSubmatrixType:
     logger.info(f"num_total_blocks {num_total_blocks}")
-    num_selected_mlp_blocks = int(num_total_blocks *
-                                  downsample_blocks_ratio)
+    num_selected_mlp_blocks = int(num_total_blocks * downsample_blocks_ratio)
     logger.info(f"num_selected_mlp_blocks {num_selected_mlp_blocks}")
 
     # Use a min-heap to maintain top n blocks efficiently
