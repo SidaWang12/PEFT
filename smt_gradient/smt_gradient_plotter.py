@@ -1,10 +1,90 @@
+import glob
 import os
+import subprocess
 from typing import Dict, List
 
 from matplotlib import pyplot as plt
 import numpy as np
+import torch
+import seaborn as sns
 
 from utils.types_and_structs import LayerLevelGradType, SMTBlockType
+
+
+def generate_grad_heatmaps(grads_heatmap_path: str, warup_abs_grads: LayerLevelGradType) -> None:
+    def downsample(tensor, new_h, new_w):
+            h, w = tensor.shape
+            tensor = tensor[:h - h % new_h, :w - w % new_w]
+            tensor = tensor.view(new_h, h // new_h, new_w, w // new_w).mean(3).mean(1)
+            return tensor
+    
+    proj_names = set()
+    for key in warup_abs_grads:
+        proj_names.add(key[0])
+    proj_names = sorted(proj_names)
+    
+    downsampled_data = {}
+    for key in warup_abs_grads:
+        grads = warup_abs_grads[key]
+        
+        vmin, vmax = float('inf'), float('-inf')
+
+    for key in warup_abs_grads:
+        grads = warup_abs_grads[key]
+        down = downsample(grads, 100, 100)
+        downsampled_data[key] = down
+    
+    layer_to_projections = {}
+    for key, down in downsampled_data.items():
+        module, layer = key
+        if layer not in layer_to_projections:
+            layer_to_projections[layer] = {}
+        layer_to_projections[layer][module] = down
+
+    # Define consistent color scale across all plots
+    all_values = torch.cat([v.flatten() for v in downsampled_data.values()])
+    vmin, vmax = all_values.min().item(), all_values.max().item()
+
+    # Plot each layer with 3 projections side by side
+    for layer_idx, module_data in layer_to_projections.items():
+        _, axes = plt.subplots(1, len(proj_names), figsize=(18, 6))  # one row, 3 columns
+
+        for i, proj in enumerate(proj_names):
+            ax = axes[i]
+            data = module_data.get(proj)
+
+            if data is not None:
+                sns.heatmap(data.numpy(), ax=ax, cmap='viridis', vmin=vmin, vmax=vmax)
+                ax.set_title(f"{proj}, layer {layer_idx}")
+            else:
+                ax.axis("off")  # Hide subplot if projection is missing
+
+            ax.set_xlabel("Column Index")
+            ax.set_ylabel("Row Index")
+
+        plt.tight_layout()
+        save_path = os.path.join(grads_heatmap_path, f"layer_{layer_idx}_all_proj.jpg")
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path)
+        plt.close()
+    
+    output_video = os.path.join(grads_heatmap_path, f"{proj_names} grads_heatmap.mp4")
+    ffmpeg_cmd = [
+        "ffmpeg",
+        "-y",
+        "-framerate", "2",
+        "-pattern_type", "glob",
+        "-i", os.path.join(grads_heatmap_path, "layer_*.jpg"),
+        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+        "-c:v", "mjpeg",               # Use MJPEG codec
+        "-q:v", "2",                   # Quality (lower is better)
+        output_video.replace(".mp4", ".avi")
+    ]
+
+    subprocess.run(ffmpeg_cmd, check=True)
+
+    for file_path in glob.glob(os.path.join(grads_heatmap_path, "*.jpg")):
+        os.remove(file_path)
 
 
 def plot_layer_level_grads(grad_statistics: LayerLevelGradType,

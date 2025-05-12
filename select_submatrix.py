@@ -65,6 +65,7 @@ def main():
     TrainingMonitor.memory_stats()
     logger.info("Training completed successfully")
 
+    logger.info("Selecting submatrix...")
     selected_mlp_submatrix = {}
     if training_args.downsample_mlp_blocks_ratio >= 0:
         selected_mlp_submatrix = select_submatrix(

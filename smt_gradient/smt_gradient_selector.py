@@ -4,10 +4,11 @@ import math
 import os
 import heapq
 from typing import Dict, List
+from matplotlib import pyplot as plt
 import torch
 from utils.logging import logger
 from utils.types_and_structs import LayerLevelGradType, SMTBlockType, SelectedSubmatrixType
-from smt_gradient.smt_gradient_plotter import plot_layer_level_grads, plot_gradient_per_block_distribution
+from smt_gradient.smt_gradient_plotter import generate_grad_heatmaps, plot_layer_level_grads, plot_gradient_per_block_distribution
 from transformers import AutoModelForCausalLM
 
 
@@ -20,11 +21,15 @@ def select_submatrix(
     for key in warmup_grads:
         warup_abs_grads[key] = warmup_grads[key].abs() / global_step
 
-    analysis_plot_path = os.path.join(output_dir, f'{mlp_or_attention.name}_plots')
-    os.makedirs(analysis_plot_path, exist_ok=True)
+    if enable_analysis:
+        grads_heatmap_path = os.path.join(output_dir, "grad_heatmaps")
+        generate_grad_heatmaps(grads_heatmap_path, warup_abs_grads)
+
+    layer_block_grad_analysis_path = os.path.join(output_dir, f'{mlp_or_attention.name}_plots')
+    os.makedirs(layer_block_grad_analysis_path, exist_ok=True)
 
     if enable_analysis:
-        _analyze_layer_level_grads(analysis_plot_path, warup_abs_grads,
+        _analyze_layer_level_grads(layer_block_grad_analysis_path, warup_abs_grads,
                                    mlp_or_attention)
 
     block_dimension = _get_gcd_from_weight_shape(model)
@@ -39,7 +44,7 @@ def select_submatrix(
                                                  block_dimension)
 
     selected_submatrix = _select_submatrix_based_on_grads(
-        downsample_blocks_ratio, enable_analysis, analysis_plot_path,
+        downsample_blocks_ratio, enable_analysis, layer_block_grad_analysis_path,
         num_total_blocks, block_means)
 
     return selected_submatrix
@@ -137,7 +142,7 @@ def _calculate_mean_grad_per_block(warup_abs_grads: LayerLevelGradType,
 
 def _select_submatrix_based_on_grads(
         downsample_blocks_ratio: float, enable_analysis: bool,
-        analysis_plot_path: str, num_total_blocks,
+        layer_block_grad_analysis_path: str, num_total_blocks,
         block_means) -> SelectedSubmatrixType:
     logger.info(f"num_total_blocks {num_total_blocks}")
     num_selected_mlp_blocks = int(num_total_blocks * downsample_blocks_ratio)
@@ -161,7 +166,7 @@ def _select_submatrix_based_on_grads(
                     heapq.heappushpop(top_blocks, (abs_mean, (key, i, j)))
 
     if enable_analysis:
-        plot_gradient_per_block_distribution(analysis_plot_path,
+        plot_gradient_per_block_distribution(layer_block_grad_analysis_path,
                                              gradients_per_block)
 
     top_blocks.sort(reverse=True)
