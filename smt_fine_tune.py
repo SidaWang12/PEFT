@@ -5,16 +5,16 @@ from utils.types_and_structs import SelectedSubmatrixType
 from smt_gradient.model_sparsifier import model_freeze_unselected_matrix_layer
 from trl import TrlParser, ModelConfig, ScriptArguments
 
-from trainers.peft_trainer import PeftTrainer, PeftTrainerMode
+from trainers.peft_trainer import SMTTrainer, SMTTrainerMode
 from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
 from utils.logging import logger
-from model_and_config_utils.peft_config import PeftConfig
-from model_and_config_utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
+from sft.model_and_config_utils.smt_config import SMTConfig
+from sft.utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
 
 
 def main():
     # Parse arguments
-    parser = TrlParser((ScriptArguments, PeftConfig, ModelConfig))
+    parser = TrlParser((ScriptArguments, SMTConfig, ModelConfig))
     script_args, training_args, model_args = parser.parse_args_and_config()
 
     logger.info("Script Arguments: %s", script_args)
@@ -57,12 +57,12 @@ def main():
 
     # overfit_small_data = datasets["train"].select(range(100))
     # Initialize trainer
-    trainer = PeftTrainer(model=model,
+    trainer = SMTTrainer(model=model,
                           args=training_args,
                           train_dataset=datasets["train"],
                           eval_dataset=datasets["test"],
                           processing_class=tokenizer,
-                          mode=PeftTrainerMode.TrainingMode,
+                          mode=SMTTrainerMode.TrainingMode,
                           callbacks=[GPUMemoryStatsCallback()])
 
     # Log initial memory stats

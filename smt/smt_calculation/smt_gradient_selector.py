@@ -4,11 +4,10 @@ import math
 import os
 import heapq
 from typing import Dict, List
-from matplotlib import pyplot as plt
 import torch
 from utils.logging import logger
-from utils.types_and_structs import LayerLevelGradType, SMTBlockType, SelectedSubmatrixType
-from smt_gradient.smt_gradient_plotter import generate_grad_heatmaps, plot_layer_level_grads, plot_gradient_per_block_distribution
+from smt.trainers.types_and_structs import LayerLevelGradType, SMTBlockType, SelectedSubmatrixType
+from smt.smt_calculation.smt_gradient_plotter import generate_grad_heatmaps, plot_layer_level_grads, plot_gradient_per_block_distribution
 from transformers import AutoModelForCausalLM
 
 

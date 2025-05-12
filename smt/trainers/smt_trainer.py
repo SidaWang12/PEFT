@@ -1,7 +1,7 @@
 import re
 from typing import Any, Callable, Optional, Union
-from utils.get_module_names import get_module_name
-from utils.types_and_structs import LayerLevelGradType, SMTBlockType
+from smt.trainers.get_module_names import get_module_name
+from smt.trainers.types_and_structs import LayerLevelGradType, SMTBlockType
 from trl.trainer.sft_trainer import SFTTrainer, SFTConfig
 import torch
 from torch import nn
@@ -23,12 +23,12 @@ from datasets import Dataset, IterableDataset
 from enum import Enum, auto
 
 
-class PeftTrainerMode(Enum):
+class SMTTrainerMode(Enum):
     SelectSubmatrixMode = auto()
     TrainingMode = auto()
 
 
-class PeftTrainer(SFTTrainer):
+class SMTTrainer(SFTTrainer):
     def __init__(
         self,
         model: Union[str, nn.Module, PreTrainedModel],
@@ -40,7 +40,7 @@ class PeftTrainer(SFTTrainer):
                                          BaseImageProcessor,
                                          FeatureExtractionMixin,
                                          ProcessorMixin]] = None,
-        mode: PeftTrainerMode = None,
+        mode: SMTTrainerMode = None,
         compute_loss_func: Optional[Callable] = None,
         compute_metrics: Optional[Callable[[EvalPrediction], dict]] = None,
         callbacks: Optional[list[TrainerCallback]] = None,
@@ -73,7 +73,7 @@ class PeftTrainer(SFTTrainer):
                       num_items_in_batch=None) -> torch.Tensor:
         loss = super().training_step(model, inputs, num_items_in_batch)
 
-        if self.mode == PeftTrainerMode.SelectSubmatrixMode:
+        if self.mode == SMTTrainerMode.SelectSubmatrixMode:
             _get_warmup_mlp_grads(model, self.warmup_mlp_grads,
                                   self.downsample_mlp_blocks_ratio)
             _get_warmup_attention_grads(model, self.warmup_attention_grads,

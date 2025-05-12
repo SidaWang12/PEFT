@@ -1,19 +1,19 @@
 import json
 import os
-from utils.types_and_structs import SMTBlockType
+from smt.trainers.types_and_structs import SMTBlockType
 from trl import TrlParser, ModelConfig, ScriptArguments
 
-from trainers.peft_trainer import PeftTrainerMode, PeftTrainer
+from smt.trainers.smt_trainer import SMTTrainerMode, SMTTrainer
 from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
 from utils.logging import logger
-from smt_gradient.smt_gradient_selector import select_submatrix
-from model_and_config_utils.peft_config import PeftConfig
-from model_and_config_utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
+from smt.smt_calculation.smt_gradient_selector import select_submatrix
+from smt.trainers.smt_config import SMTConfig
+from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
 
 
 def main():
     # Parse arguments
-    parser = TrlParser((ScriptArguments, PeftConfig, ModelConfig))
+    parser = TrlParser((ScriptArguments, SMTConfig, ModelConfig))
     script_args, training_args, model_args = parser.parse_args_and_config()
 
     logger.info("Script Arguments: %s", script_args)
@@ -47,13 +47,13 @@ def main():
 
     # overfit_small_data = datasets["train"].select(range(100))
     # Initialize trainer
-    trainer = PeftTrainer(
+    trainer = SMTTrainer(
         model=model,
         args=training_args,
         train_dataset=datasets["train"],  #.select(range(100, 200)),
         eval_dataset=datasets["test"],  #.select(range(100, 200)),
         processing_class=tokenizer,
-        mode=PeftTrainerMode.SelectSubmatrixMode,
+        mode=SMTTrainerMode.SelectSubmatrixMode,
         callbacks=[GPUMemoryStatsCallback()])
 
     # Log initial memory stats

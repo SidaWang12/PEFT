@@ -3,17 +3,17 @@ import os
 from utils.types_and_structs import SMTBlockType
 from trl import TrlParser, ModelConfig, ScriptArguments
 
-from trainers.peft_trainer import PeftTrainerMode, PeftTrainer
+from sft.trainers.smt_trainer import SMTTrainerMode, SMTTrainer
 from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
 from utils.logging import logger
-from smt_gradient.smt_gradient_selector import select_submatrix
-from model_and_config_utils.peft_config import PeftConfig
-from model_and_config_utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
+from smt_calculation.smt_gradient_selector import select_submatrix
+from trainers.smt_config import SMTConfig
+from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
 
 
 def main():
     # Parse arguments
-    parser = TrlParser((ScriptArguments, PeftConfig, ModelConfig))
+    parser = TrlParser((ScriptArguments, SMTConfig, ModelConfig))
     script_args, training_args, model_args = parser.parse_args_and_config()
 
     logger.info("Script Arguments: %s", script_args)

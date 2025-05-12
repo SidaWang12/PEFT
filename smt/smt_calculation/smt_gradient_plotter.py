@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import seaborn as sns
 
-from utils.types_and_structs import LayerLevelGradType, SMTBlockType
+from smt.trainers.types_and_structs import LayerLevelGradType, SMTBlockType
 
 
 def generate_grad_heatmaps(grads_heatmap_path: str, warup_abs_grads: LayerLevelGradType) -> None:

@@ -3,7 +3,7 @@ from trl import SFTConfig
 
 
 @dataclass
-class PeftConfig(SFTConfig):
+class SMTConfig(SFTConfig):
     """
     PEFT (Parameter-Efficient Fine-Tuning) specific configuration.
     """

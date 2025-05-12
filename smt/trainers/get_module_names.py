@@ -1,5 +1,5 @@
 
-from utils.types_and_structs import SMTBlockType
+from smt.trainers.types_and_structs import SMTBlockType
 
 
 def get_module_name(name: str, smt_block_type: SMTBlockType) -> str:
