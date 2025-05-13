@@ -55,12 +55,16 @@ def main():
     for name, param in model.named_parameters():
         logger.info(f"{name}, requres_grad, {param.requires_grad}")
 
+    logger.info("Trainable parameters statistics after freezing unselected layers:")
     _trainable_parameters_statistics(model)
 
     block_dimension = calculate_block_dimension(model)
     model = convert_linear_layer_to_matrix_sparsity(
         model, selected_mlp_submatrix, selected_attention_submatrix,
         block_dimension)
+    
+    logger.info("Trainable parameters statistics after freezing unselected blocks:")
+    _trainable_parameters_statistics(model)
 
     # overfit_small_data = datasets["train"].select(range(100))
     # Initialize trainer

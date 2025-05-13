@@ -84,16 +84,16 @@ class BlockSparseLinearFunction(torch.autograd.Function):
         # memory free
         del weight
         del input_list
-        del matrix_index_list
+        del selected_blocks_list
 
         return output
 
     @staticmethod
     def backward(ctx, grad_output):
         weight, = ctx.saved_tensors
-        input_list = ctx.selected_blocks_list
+        input_list = ctx.input_list
         block_dimension = ctx.block_dimension
-        matrix_index_list = ctx.list2
+        selected_blocks_list = ctx.selected_blocks_list
 
         # Pytorch use C++ engine to check whether gradient has matched dimenstion or not
         grad_weight = torch.empty(len(input_list) * block_dimension,
@@ -101,7 +101,7 @@ class BlockSparseLinearFunction(torch.autograd.Function):
                                   dtype=grad_output.dtype,
                                   device=grad_output.device)
         for i in range(len(input_list)):
-            index = matrix_index_list[i]
+            index = selected_blocks_list[i]
 
             # print("index:", index)
             # print("grad_output_dim:", grad_output.size())
@@ -125,6 +125,6 @@ class BlockSparseLinearFunction(torch.autograd.Function):
         # memory free
         del weight
         del input_list
-        del matrix_index_list
+        del selected_blocks_list
 
-        return grad_input, grad_weight, None, None
+        return grad_input, grad_weight, None, None, None

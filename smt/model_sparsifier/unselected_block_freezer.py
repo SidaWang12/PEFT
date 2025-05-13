@@ -10,8 +10,7 @@ def convert_linear_layer_to_matrix_sparsity(model,
                                             selected_mlp_submatrix,
                                             selected_attention_submatrix,
                                             block_dimension,
-                                            part_module_name=['.layers'],
-                                            mixture=False):
+                                            part_module_name=['.layers']):
     pattern = re.compile(r'model\.layers\.(\d+)\.')
 
     replace_name = []
@@ -28,7 +27,6 @@ def convert_linear_layer_to_matrix_sparsity(model,
                 match = pattern.search(name)
                 layer_number = int(match.group(1)) if match else None
 
-                # index_list: list of index which require_grad, need to pass into Linear
                 if (module_name,
                         layer_number) in selected_mlp_submatrix.keys():
                     selected_blocks_list = selected_mlp_submatrix[(
@@ -41,6 +39,26 @@ def convert_linear_layer_to_matrix_sparsity(model,
                             module.weight.device).to(module.weight.dtype)
                     
                     recursive_setattr(model, name, tmp)
+        if "self_attn" in name:
+            module = _recursive_getattr(model, name)
+            if module.weight.requires_grad:
+                module_name = 'q_proj' if 'q_proj' in name else 'k_proj' if 'k_proj' in name else 'v_proj' if 'v_proj' in name else 'o_proj' if 'o_proj' in name else None
+                match = pattern.search(name)
+                layer_number = int(match.group(1)) if match else None
+
+                if (module_name,
+                        layer_number) in selected_attention_submatrix.keys():
+                    selected_blocks_list = selected_attention_submatrix[(
+                        module_name, layer_number)]
+                    tmp = BlockSparseLinear(
+                        module.weight,
+                        bias=None,
+                        selected_blocks_list=selected_blocks_list,
+                        block_dimension=block_dimension).to(
+                            module.weight.device).to(module.weight.dtype)
+                    
+                    recursive_setattr(model, name, tmp)
+        # TODO: support attention.
 
     return model
 
