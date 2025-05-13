@@ -48,8 +48,8 @@ def main():
     logger.info(
         f"selected_attention_submatrix: {selected_attention_submatrix}")
 
-    # model = model_freeze_unselected_matrix_layer(model, selected_mlp_submatrix,
-    #                                              selected_attention_submatrix)
+    model = model_freeze_unselected_matrix_layer(model, selected_mlp_submatrix,
+                                                 selected_attention_submatrix)
 
     logger.info("Print the requres_grad of model weight.")
     for name, param in model.named_parameters():
@@ -59,14 +59,17 @@ def main():
     _trainable_parameters_statistics(model)
 
     block_dimension = calculate_block_dimension(model)
-    # model = convert_linear_layer_to_matrix_sparsity(
-    #     model, selected_mlp_submatrix, selected_attention_submatrix,
-    #     block_dimension)
+    model = convert_linear_layer_to_matrix_sparsity(
+        model, selected_mlp_submatrix, selected_attention_submatrix,
+        block_dimension)
     
     logger.info("Trainable parameters statistics after freezing unselected blocks:")
-    _trainable_parameters_statistics(model)
+    selected_param_num = _trainable_parameters_statistics(model)
 
-    # overfit_small_data = datasets["train"].select(range(100))
+    if selected_param_num == 0:
+        logger.info("Trainable parameters number is 0. Skip training.")
+        return
+
     # Initialize trainer
     trainer = SMTTrainer(model=model,
                          args=training_args,
@@ -106,7 +109,7 @@ def _load_selected_submatrix(selected_submatrix_file: str) -> \
     return selected_mlp_submatrix, selected_attention_submatrix
 
 
-def _trainable_parameters_statistics(model: AutoModelForCausalLM):
+def _trainable_parameters_statistics(model: AutoModelForCausalLM) -> int:
     # print matrix sparsity trainable parameters
     total_num = sum(p.numel() for p in model.parameters())
     selected_num = sum(p.numel() for p in model.parameters()
@@ -116,6 +119,7 @@ def _trainable_parameters_statistics(model: AutoModelForCausalLM):
     logger.info(f"Number of trainable parameters: {selected_num/1e6} M,\ns \
                about {rate}% matrix sparsity parameters in the model are training"
                 )
+    return selected_num
 
 
 if __name__ == "__main__":

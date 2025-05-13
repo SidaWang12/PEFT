@@ -4,57 +4,82 @@ from torch import nn
 
 
 class BlockSparseLinear(torch.nn.Module):
-    # a simple implementation of matrix sparsity
-    # for now only support Linear Layer
-    def __init__(self,
-                 weight,
-                 bias=None,
-                 selected_blocks_list=[],
-                 block_dimension=256):
+    """A block-sparse implementation of a linear layer.
+    
+    Args:
+        weight: The full weight matrix of the linear layer
+        bias: Optional bias vector
+        selected_blocks_list: List of (row, col) block indices to keep active
+        block_dimension: Size of each block (default: 256)
+    """
+    def __init__(self, weight, bias=None, selected_blocks_list=[], block_dimension=256):
         super(BlockSparseLinear, self).__init__()
+        # Store original parameters
         self.weight = weight
         self.weight.requires_grad = False
         self.bias = bias
         self.selected_blocks_list = selected_blocks_list
-
-        self.selected_weight = torch.empty(len(selected_blocks_list) *
-                                           block_dimension,
-                                           block_dimension,
-                                           dtype=self.weight.data.dtype,
-                                           device=self.weight.data.device)
         self.block_dimension = block_dimension
 
-        for i in range(len(selected_blocks_list)):
-            index = selected_blocks_list[i]
-            self.selected_weight[
-                i * block_dimension:i * block_dimension +
-                block_dimension, :] = self.weight.data[
-                    index[0] * block_dimension:index[0] * block_dimension +
-                    block_dimension,
-                    index[1] * block_dimension:index[1] * block_dimension +
-                    block_dimension]
+        # Initialize selected weight blocks
+        self._init_selected_weights()
+        
+        # The custom sparse linear operation
+        self.block_sparse_linear_function = BlockSparseLinearFunction.apply
+
+    def _init_selected_weights(self):
+        """Initialize the trainable selected weight blocks."""
+        num_blocks = len(self.selected_blocks_list)
+        output_dim = num_blocks * self.block_dimension
+        input_dim = self.block_dimension
+        
+        self.selected_weight = torch.empty(
+            output_dim,
+            input_dim,
+            dtype=self.weight.data.dtype,
+            device=self.weight.data.device
+        )
+        
+        # Copy relevant blocks from original weights
+        for i, (row_idx, col_idx) in enumerate(self.selected_blocks_list):
+            row_start = row_idx * self.block_dimension
+            row_end = row_start + self.block_dimension
+            col_start = col_idx * self.block_dimension
+            col_end = col_start + self.block_dimension
+            
+            block = self.weight.data[row_start:row_end, col_start:col_end]
+            self.selected_weight[i*self.block_dimension:(i+1)*self.block_dimension, :] = block
+        
         self.selected_weight.requires_grad = True
         self.selected_weight = nn.Parameter(self.selected_weight)
 
-        self.block_sparse_linear_function = BlockSparseLinearFunction.apply
+    def _update_original_weights(self):
+        """Update the original weight matrix with trained block values."""
+        for i, (row_idx, col_idx) in enumerate(self.selected_blocks_list):
+            row_start = row_idx * self.block_dimension
+            row_end = row_start + self.block_dimension
+            col_start = col_idx * self.block_dimension
+            col_end = col_start + self.block_dimension
+            
+            # Get the trained block
+            trained_block = self.selected_weight[i*self.block_dimension:(i+1)*self.block_dimension, :]
+            
+            # Update the corresponding block in original weights
+            self.weight.data[row_start:row_end, col_start:col_end] = trained_block
 
     def forward(self, input):
-        for i in range(len(self.selected_blocks_list)):
-            index = self.selected_blocks_list[i]
-            # self.selected_weight[i * Block_dimension: i * Block_dimension + Block_dimension, :] = self.weight.data[index[0] * Block_dimension: index[0] * Block_dimension + Block_dimension, index[1] * Block_dimension: index[1] * Block_dimension + Block_dimension]
-            self.weight.data[
-                index[0] *
-                self.block_dimension:index[0] * self.block_dimension +
-                self.block_dimension, index[1] *
-                self.block_dimension:index[1] * self.block_dimension +
-                self.block_dimension] = self.selected_weight[
-                    i * self.block_dimension:i * self.block_dimension +
-                    self.block_dimension, :]
-
-        output = self.block_sparse_linear_function(input, self.selected_weight,
-                                              self.selected_blocks_list,
-                                              self.weight,
-                                              self.block_dimension)
+        # Update original weight matrix with trained blocks
+        self._update_original_weights()
+        
+        # Perform the block-sparse linear operation
+        output = self.block_sparse_linear_function(
+            input, 
+            self.selected_weight,
+            self.selected_blocks_list,
+            self.weight,
+            self.block_dimension
+        )
+        
         return output
 
 
@@ -75,10 +100,7 @@ class BlockSparseLinearFunction(torch.autograd.Function):
         ctx.block_dimension = block_dimension
 
         ctx.save_for_backward(weight)
-
-        # output = input.mm(weight.t())
-        # print("input size:",input.size())
-        # print("weight size:",weight.data.size())
+    
         output = torch.matmul(input, weight.t())
 
         # memory free
@@ -103,14 +125,6 @@ class BlockSparseLinearFunction(torch.autograd.Function):
         for i in range(len(input_list)):
             index = selected_blocks_list[i]
 
-            # print("index:", index)
-            # print("grad_output_dim:", grad_output.size())
-            # tmp = grad_output.permute(0, 2, 1)[:, index[0] * Block_dimension: index[0] * Block_dimension + Block_dimension, :]
-            # print("tmp size", tmp.size())
-            # print("input list[i]", input_list[i].size())
-            # tmp1 = torch.matmul(tmp, input_list[i])
-            # grad_weight[i * Block_dimension: i * Block_dimension + Block_dimension, :] = torch.sum(tmp1, dim=0)
-
             grad_weight[i * block_dimension:i * block_dimension +
                         block_dimension, :] = torch.sum(torch.matmul(
                             grad_output.permute(
@@ -121,10 +135,5 @@ class BlockSparseLinearFunction(torch.autograd.Function):
                                                         dim=0)
 
         grad_input = torch.matmul(grad_output, weight)
-
-        # memory free
-        del weight
-        del input_list
-        del selected_blocks_list
 
         return grad_input, grad_weight, None, None, None
