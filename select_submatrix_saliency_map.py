@@ -29,20 +29,23 @@ def main():
     # Initialize components
     tokenizer = load_and_configure_tokenizer(model_args)
     model = initialize_model(model_args.model_name_or_path, model_kwargs)
-    datasets = prepare_datasets(script_args.dataset_name,
-                                script_args.dataset_config,
-                                script_args.dataset_train_split,
-                                training_args.seed,
-                                # training_args.test_set_percentage)
-                                test_set_percentage=0.2)
+    datasets = prepare_datasets(
+        script_args.dataset_name,
+        script_args.dataset_config,
+        script_args.dataset_train_split,
+        training_args.seed,
+        # training_args.test_set_percentage)
+        test_set_percentage=0.2)
 
     # Log initial memory stats
     TrainingMonitor.memory_stats()
     train_data = datasets["train"]
     model.requires_grad_(True)
 
-    saliency_scores = compute_aggregated_saliency_batch(model, tokenizer, train_data.select(range(0, 2)))
-    plot_saliency_map(training_args.output_dir, saliency_scores["model.layers.0.mlp.down_proj.weight"])
+    saliency_scores = compute_aggregated_saliency_batch(
+        model, tokenizer, train_data.select(range(0, 2)))
+    plot_saliency_map(training_args.output_dir,
+                      saliency_scores["model.layers.0.mlp.down_proj.weight"])
 
 
 if __name__ == "__main__":

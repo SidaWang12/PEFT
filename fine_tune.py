@@ -1,15 +1,17 @@
 from transformers import AutoModelForCausalLM
 import json
 import os
-from utils.types_and_structs import SelectedSubmatrixType
-from smt_gradient.model_sparsifier import model_freeze_unselected_matrix_layer
+from smt.model_sparsifier.unselected_block_freezer import convert_linear_layer_to_matrix_sparsity
+from smt.trainers.types_and_structs import SelectedSubmatrixType
+from smt.model_sparsifier.unselected_layer_freezer import model_freeze_unselected_matrix_layer
 from trl import TrlParser, ModelConfig, ScriptArguments
 
-from trainers.peft_trainer import SMTTrainer, SMTTrainerMode
+from smt.trainers.smt_trainer import SMTTrainer, SMTTrainerMode
 from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
 from utils.logging import logger
-from sft.model_and_config_utils.smt_config import SMTConfig
-from sft.utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
+from smt.trainers.smt_config import SMTConfig
+from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
+from utils.block_dimention_calculation import calculate_block_dimension
 
 
 def main():
@@ -40,7 +42,7 @@ def main():
 
     model = initialize_model(model_args.model_name_or_path, model_kwargs)
 
-    selected_mlp_submatrix, selected_attention_submatrix = load_selected_submatrix(
+    selected_mlp_submatrix, selected_attention_submatrix = _load_selected_submatrix(
         os.path.join(training_args.output_dir, 'selected_blocks.json'))
     logger.info(f"selected_mlp_submatrix: {selected_mlp_submatrix}")
     logger.info(
@@ -53,17 +55,22 @@ def main():
     for name, param in model.named_parameters():
         logger.info(f"{name}, requres_grad, {param.requires_grad}")
 
-    trainable_parameters_statistics(model)
+    _trainable_parameters_statistics(model)
+
+    block_dimension = calculate_block_dimension(model)
+    model = convert_linear_layer_to_matrix_sparsity(
+        model, selected_mlp_submatrix, selected_attention_submatrix,
+        block_dimension)
 
     # overfit_small_data = datasets["train"].select(range(100))
     # Initialize trainer
     trainer = SMTTrainer(model=model,
-                          args=training_args,
-                          train_dataset=datasets["train"],
-                          eval_dataset=datasets["test"],
-                          processing_class=tokenizer,
-                          mode=SMTTrainerMode.TrainingMode,
-                          callbacks=[GPUMemoryStatsCallback()])
+                         args=training_args,
+                         train_dataset=datasets["train"],
+                         eval_dataset=datasets["test"],
+                         processing_class=tokenizer,
+                         mode=SMTTrainerMode.TrainingMode,
+                         callbacks=[GPUMemoryStatsCallback()])
 
     # Log initial memory stats
     TrainingMonitor.memory_stats()
@@ -76,8 +83,7 @@ def main():
 
     print_loss_through_whole_training(trainer.state.log_history)
 
-
-def load_selected_submatrix(selected_submatrix_file: str) -> \
+def _load_selected_submatrix(selected_submatrix_file: str) -> \
         tuple[SelectedSubmatrixType, SelectedSubmatrixType]:
     """Load two submatrices from a JSON file"""
     with open(selected_submatrix_file, 'r') as f:
@@ -96,7 +102,7 @@ def load_selected_submatrix(selected_submatrix_file: str) -> \
     return selected_mlp_submatrix, selected_attention_submatrix
 
 
-def trainable_parameters_statistics(model: AutoModelForCausalLM):
+def _trainable_parameters_statistics(model: AutoModelForCausalLM):
     # print matrix sparsity trainable parameters
     total_num = sum(p.numel() for p in model.parameters())
     selected_num = sum(p.numel() for p in model.parameters()

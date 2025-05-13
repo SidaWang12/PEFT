@@ -1,21 +1,20 @@
 from collections import defaultdict
-from functools import reduce
-import math
 import os
 import heapq
 from typing import Dict, List
 import torch
+from utils.block_dimention_calculation import calculate_block_dimension
 from utils.logging import logger
 from smt.trainers.types_and_structs import LayerLevelGradType, SMTBlockType, SelectedSubmatrixType
 from smt.smt_calculation.smt_gradient_plotter import generate_grad_heatmaps, plot_layer_level_grads, plot_gradient_per_block_distribution
 from transformers import AutoModelForCausalLM
 
 
-def select_submatrix(
-        model: AutoModelForCausalLM, warmup_grads: LayerLevelGradType,
-        global_step: int, enable_analysis: bool, output_dir: str,
-        downsample_blocks_ratio: float,
-        mlp_or_attention: SMTBlockType) -> SelectedSubmatrixType:
+def select_submatrix(model: AutoModelForCausalLM,
+                     warmup_grads: LayerLevelGradType, global_step: int,
+                     enable_analysis: bool, output_dir: str,
+                     downsample_blocks_ratio: float,
+                     mlp_or_attention: SMTBlockType) -> SelectedSubmatrixType:
     warup_abs_grads = {}
     for key in warmup_grads:
         warup_abs_grads[key] = warmup_grads[key].abs() / global_step
@@ -24,14 +23,15 @@ def select_submatrix(
         grads_heatmap_path = os.path.join(output_dir, "grad_heatmaps")
         generate_grad_heatmaps(grads_heatmap_path, warup_abs_grads)
 
-    layer_block_grad_analysis_path = os.path.join(output_dir, f'{mlp_or_attention.name}_plots')
+    layer_block_grad_analysis_path = os.path.join(
+        output_dir, f'{mlp_or_attention.name}_plots')
     os.makedirs(layer_block_grad_analysis_path, exist_ok=True)
 
     if enable_analysis:
-        _analyze_layer_level_grads(layer_block_grad_analysis_path, warup_abs_grads,
-                                   mlp_or_attention)
+        _analyze_layer_level_grads(layer_block_grad_analysis_path,
+                                   warup_abs_grads, mlp_or_attention)
 
-    block_dimension = _get_gcd_from_weight_shape(model)
+    block_dimension = calculate_block_dimension(model)
     logger.info(f"block_size is {block_dimension}")
 
     targeted_module_dims = _calculate_targeted_module_dims(
@@ -43,22 +43,10 @@ def select_submatrix(
                                                  block_dimension)
 
     selected_submatrix = _select_submatrix_based_on_grads(
-        downsample_blocks_ratio, enable_analysis, layer_block_grad_analysis_path,
-        num_total_blocks, block_means)
+        downsample_blocks_ratio, enable_analysis,
+        layer_block_grad_analysis_path, num_total_blocks, block_means)
 
     return selected_submatrix
-
-
-def _get_gcd_from_weight_shape(model: AutoModelForCausalLM) -> int:
-    """
-    Computes the greatest common divisor (GCD) of all tensor dimensions
-    in MLP and attention layers.
-    """
-    all_dims = []
-    for name, param in model.named_parameters():
-        if "mlp" in name or "attn" in name:
-            all_dims.extend(param.shape)
-    return reduce(math.gcd, all_dims)
 
 
 def _analyze_layer_level_grads(output_dir: str,
@@ -139,10 +127,11 @@ def _calculate_mean_grad_per_block(warup_abs_grads: LayerLevelGradType,
     return block_means
 
 
-def _select_submatrix_based_on_grads(
-        downsample_blocks_ratio: float, enable_analysis: bool,
-        layer_block_grad_analysis_path: str, num_total_blocks,
-        block_means) -> SelectedSubmatrixType:
+def _select_submatrix_based_on_grads(downsample_blocks_ratio: float,
+                                     enable_analysis: bool,
+                                     layer_block_grad_analysis_path: str,
+                                     num_total_blocks,
+                                     block_means) -> SelectedSubmatrixType:
     logger.info(f"num_total_blocks {num_total_blocks}")
     num_selected_mlp_blocks = int(num_total_blocks * downsample_blocks_ratio)
     logger.info(f"num_selected_mlp_blocks {num_selected_mlp_blocks}")

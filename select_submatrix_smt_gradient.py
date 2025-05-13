@@ -79,7 +79,8 @@ def main():
         selected_attention_submatrix = select_submatrix(
             model, trainer.warmup_attention_grads, trainer.state.global_step,
             training_args.enable_analysis, training_args.output_dir,
-            training_args.downsample_attention_blocks_ratio, SMTBlockType.ATTENTION)
+            training_args.downsample_attention_blocks_ratio,
+            SMTBlockType.ATTENTION)
     logger.info(f"selected_attention_submatrix {selected_attention_submatrix}")
 
     submatrix_file_path = os.path.join(training_args.output_dir,
