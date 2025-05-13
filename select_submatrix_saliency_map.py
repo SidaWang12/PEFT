@@ -4,7 +4,7 @@ from trl import TrlParser, ModelConfig, ScriptArguments
 
 from utils.monitoring import TrainingMonitor
 from trl.trainer.sft_trainer import SFTConfig
-from utils.logging import logger
+from utils.logging_utils import logger
 from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
 
 

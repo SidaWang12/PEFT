@@ -8,7 +8,7 @@ from trl import TrlParser, ModelConfig, ScriptArguments
 
 from smt.trainers.smt_trainer import SMTTrainer, SMTTrainerMode
 from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
-from utils.logging import logger
+from utils.logging_utils import logger
 from smt.trainers.smt_config import SMTConfig
 from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
 from utils.block_dimention_calculation import calculate_block_dimension
@@ -48,8 +48,8 @@ def main():
     logger.info(
         f"selected_attention_submatrix: {selected_attention_submatrix}")
 
-    model = model_freeze_unselected_matrix_layer(model, selected_mlp_submatrix,
-                                                 selected_attention_submatrix)
+    # model = model_freeze_unselected_matrix_layer(model, selected_mlp_submatrix,
+    #                                              selected_attention_submatrix)
 
     logger.info("Print the requres_grad of model weight.")
     for name, param in model.named_parameters():
@@ -59,9 +59,9 @@ def main():
     _trainable_parameters_statistics(model)
 
     block_dimension = calculate_block_dimension(model)
-    model = convert_linear_layer_to_matrix_sparsity(
-        model, selected_mlp_submatrix, selected_attention_submatrix,
-        block_dimension)
+    # model = convert_linear_layer_to_matrix_sparsity(
+    #     model, selected_mlp_submatrix, selected_attention_submatrix,
+    #     block_dimension)
     
     logger.info("Trainable parameters statistics after freezing unselected blocks:")
     _trainable_parameters_statistics(model)

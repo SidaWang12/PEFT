@@ -5,7 +5,7 @@ from trl import TrlParser, ModelConfig, ScriptArguments
 
 from smt.trainers.smt_trainer import SMTTrainerMode, SMTTrainer
 from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
-from utils.logging import logger
+from utils.logging_utils import logger
 from smt.smt_calculation.smt_gradient_selector import select_submatrix
 from smt.trainers.smt_config import SMTConfig
 from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
