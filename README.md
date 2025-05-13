@@ -1,7 +1,17 @@
 # Parameter Efficient Supervised Fine-Tuning (SMT)
 
-Implementation of Sparse Matrix Tuning (SMT) using TRL's `SFTTrainer` for efficient LLM fine-tuning, based on:
+## Introduction
 
-> He, Haoze, et al. "Sparse Matrix in Large Language Model Fine-Tuning."  
-> arXiv preprint [arXiv:2405.15525](https://arxiv.org/abs/2405.15525) (2024).
+Development status: ongoing
+
+Provide an open-source library which implements multiple PEFT methods, including gradient based SMT, saliency map, and LORA, with HuggingFace’ TRL library.
+
+*  First to propose a saliency map–based PEFT approach, enabling interpretable parameter-efficient tuning.
+*  Ported the [SMT (sparse matrix matrices) implementation](https://github.com/HectorHHZ/Sparse_Matrix_Tuning) from DeepSpeed to Hugging Face’s TRL library for improved integration and maint
+
+## Related Paper
+
+*  He, Haoze, Li, Juncheng Billy, Jiang, Xuan, and Miller, Heather. SMT: Fine-Tuning Large Language Models with Sparse Matrices. ICLR 2025.
+*  Hu, Edward J., et al. LoRA: Low-Rank Adaptation of Large Language Models. ICLR 2022
+*  Simonyan, Karen, Andrea Vedaldi, and Andrew Zisserman. Deep Inside Convolutional Networks: Visualising Image Classification Models and Saliency Maps. arXiv preprint arXiv:1312.6034 (2013).
 
