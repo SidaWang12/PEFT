@@ -1,4 +1,5 @@
 import re
+import time
 from typing import Any, Callable, Optional, Union
 from smt.trainers.get_module_names import get_module_name
 from smt.trainers.types_and_structs import LayerLevelGradType, SMTBlockType
@@ -66,11 +67,13 @@ class SMTTrainer(SFTTrainer):
         self.mode = mode
         self.downsample_mlp_blocks_ratio = args.downsample_mlp_blocks_ratio
         self.downsample_attention_blocks_ratio = args.downsample_attention_blocks_ratio
+        self.sum_training_step_time = 0.0
 
     def training_step(self,
                       model: nn.Module,
                       inputs: dict[str, Union[torch.Tensor, Any]],
                       num_items_in_batch=None) -> torch.Tensor:
+        start_time = time.time()
         loss = super().training_step(model, inputs, num_items_in_batch)
 
         if self.mode == SMTTrainerMode.SelectSubmatrixMode:
@@ -78,6 +81,7 @@ class SMTTrainer(SFTTrainer):
                                   self.downsample_mlp_blocks_ratio)
             _get_warmup_attention_grads(model, self.warmup_attention_grads,
                                         self.downsample_attention_blocks_ratio)
+        self.sum_training_step_time += time.time() - start_time
 
         return loss
 

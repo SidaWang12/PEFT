@@ -12,7 +12,11 @@ class BlockSparseLinear(torch.nn.Module):
         selected_blocks_list: List of (row, col) block indices to keep active
         block_dimension: Size of each block (default: 256)
     """
-    def __init__(self, weight, bias=None, selected_blocks_list=[], block_dimension=256):
+    def __init__(self,
+                 weight,
+                 bias=None,
+                 selected_blocks_list=[],
+                 block_dimension=256):
         super(BlockSparseLinear, self).__init__()
         # Store original parameters
         self.weight = weight
@@ -23,7 +27,7 @@ class BlockSparseLinear(torch.nn.Module):
 
         # Initialize selected weight blocks
         self._init_selected_weights()
-        
+
         # The custom sparse linear operation
         self.block_sparse_linear_function = BlockSparseLinearFunction.apply
 
@@ -32,24 +36,23 @@ class BlockSparseLinear(torch.nn.Module):
         num_blocks = len(self.selected_blocks_list)
         output_dim = num_blocks * self.block_dimension
         input_dim = self.block_dimension
-        
-        self.selected_weight = torch.empty(
-            output_dim,
-            input_dim,
-            dtype=self.weight.data.dtype,
-            device=self.weight.data.device
-        )
-        
+
+        self.selected_weight = torch.empty(output_dim,
+                                           input_dim,
+                                           dtype=self.weight.data.dtype,
+                                           device=self.weight.data.device)
+
         # Copy relevant blocks from original weights
         for i, (row_idx, col_idx) in enumerate(self.selected_blocks_list):
             row_start = row_idx * self.block_dimension
             row_end = row_start + self.block_dimension
             col_start = col_idx * self.block_dimension
             col_end = col_start + self.block_dimension
-            
+
             block = self.weight.data[row_start:row_end, col_start:col_end]
-            self.selected_weight[i*self.block_dimension:(i+1)*self.block_dimension, :] = block
-        
+            self.selected_weight[i * self.block_dimension:(i + 1) *
+                                 self.block_dimension, :] = block
+
         self.selected_weight.requires_grad = True
         self.selected_weight = nn.Parameter(self.selected_weight)
 
@@ -60,26 +63,26 @@ class BlockSparseLinear(torch.nn.Module):
             row_end = row_start + self.block_dimension
             col_start = col_idx * self.block_dimension
             col_end = col_start + self.block_dimension
-            
+
             # Get the trained block
-            trained_block = self.selected_weight[i*self.block_dimension:(i+1)*self.block_dimension, :]
-            
+            trained_block = self.selected_weight[i *
+                                                 self.block_dimension:(i + 1) *
+                                                 self.block_dimension, :]
+
             # Update the corresponding block in original weights
-            self.weight.data[row_start:row_end, col_start:col_end] = trained_block
+            self.weight.data[row_start:row_end,
+                             col_start:col_end] = trained_block
 
     def forward(self, input):
         # Update original weight matrix with trained blocks
         self._update_original_weights()
-        
+
         # Perform the block-sparse linear operation
-        output = self.block_sparse_linear_function(
-            input, 
-            self.selected_weight,
-            self.selected_blocks_list,
-            self.weight,
-            self.block_dimension
-        )
-        
+        output = self.block_sparse_linear_function(input, self.selected_weight,
+                                                   self.selected_blocks_list,
+                                                   self.weight,
+                                                   self.block_dimension)
+
         return output
 
 
@@ -100,7 +103,7 @@ class BlockSparseLinearFunction(torch.autograd.Function):
         ctx.block_dimension = block_dimension
 
         ctx.save_for_backward(weight)
-    
+
         output = torch.matmul(input, weight.t())
 
         # memory free

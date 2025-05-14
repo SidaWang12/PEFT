@@ -1,1 +1,1 @@
-{"selected_mlp_submatrix":{},"selected_attention_submatrix":{}}
+{"selected_mlp_submatrix":{"('down_proj', 5)":[[2,20]]},"selected_attention_submatrix":{}}

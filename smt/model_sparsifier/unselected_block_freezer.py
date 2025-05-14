@@ -37,7 +37,7 @@ def convert_linear_layer_to_matrix_sparsity(model,
                         selected_blocks_list=selected_blocks_list,
                         block_dimension=block_dimension).to(
                             module.weight.device).to(module.weight.dtype)
-                    
+
                     recursive_setattr(model, name, tmp)
         if "self_attn" in name:
             module = _recursive_getattr(model, name)
@@ -56,11 +56,12 @@ def convert_linear_layer_to_matrix_sparsity(model,
                         selected_blocks_list=selected_blocks_list,
                         block_dimension=block_dimension).to(
                             module.weight.device).to(module.weight.dtype)
-                    
+
                     recursive_setattr(model, name, tmp)
         # TODO: support attention.
 
     return model
+
 
 def recursive_setattr(model, module_name, module):
     """
@@ -78,6 +79,7 @@ def recursive_setattr(model, module_name, module):
     for name in split_list[:-1]:
         output = getattr(output, name)
     output.__setattr__(split_list[-1], module)
+
 
 def _recursive_getattr(model, module_name):
     """
