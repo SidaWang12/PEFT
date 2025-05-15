@@ -23,6 +23,7 @@ def main():
         "trust_remote_code": model_args.trust_remote_code,
         "attn_implementation": model_args.attn_implementation,
         "torch_dtype": model_args.torch_dtype,
+        "device_map": "auto"
     }
     logger.info("Model Kwargs: %s", model_kwargs)
 
@@ -43,7 +44,7 @@ def main():
     model.requires_grad_(True)
 
     saliency_scores = compute_aggregated_saliency_batch(
-        model, tokenizer, train_data.select(range(0, 2)))
+        model, tokenizer, train_data.select(range(0, 100)), batch_size=16)
     plot_saliency_map(training_args.output_dir,
                       saliency_scores["model.layers.0.mlp.down_proj.weight"])
 

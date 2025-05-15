@@ -41,18 +41,15 @@ def prepare_batch(batch, tokenizer):
 def compute_aggregated_saliency_batch(model,
                                       tokenizer,
                                       dataset,
-                                      batch_size=16,
-                                      max_samples=None,
+                                      batch_size,
                                       target_layers=["down_proj"]):
-    """不使用DataCollator的显著性计算"""
     model.eval()
 
-    # 1. 只对目标层启用梯度
     for name, param in model.named_parameters():
         param.requires_grad = any(layer in name for layer in target_layers)
+        print(name, param.requires_grad)
 
-    num_samples = min(len(dataset),
-                      max_samples) if max_samples else len(dataset)
+    num_samples = len(dataset)
     saliency_dict = defaultdict(lambda: 0)
     device = model.device
 
@@ -86,5 +83,7 @@ def compute_aggregated_saliency_batch(model,
         for name in saliency_dict:
             if not isinstance(saliency_dict[name], int):
                 saliency_dict[name] /= num_samples
+    
+    print(saliency_dict.keys())
 
     return {k: v for k, v in saliency_dict.items() if not isinstance(v, int)}

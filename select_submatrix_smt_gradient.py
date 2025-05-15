@@ -26,6 +26,7 @@ def main():
         "trust_remote_code": model_args.trust_remote_code,
         "attn_implementation": model_args.attn_implementation,
         "torch_dtype": model_args.torch_dtype,
+        "device_map": "auto"
     }
     logger.info("Model Kwargs: %s", model_kwargs)
 
