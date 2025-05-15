@@ -1,8 +1,8 @@
 import re
 import time
 from typing import Any, Callable, Optional, Union
-from smt.trainers.get_module_names import get_module_name
-from smt.trainers.types_and_structs import LayerLevelGradType, SMTBlockType
+from block_libs.get_module_names import get_module_name
+from block_libs.types_and_structs import LayerLevelBlockType, ModuleType
 from trl.trainer.sft_trainer import SFTTrainer, SFTConfig
 import torch
 from torch import nn
@@ -87,7 +87,7 @@ class SMTTrainer(SFTTrainer):
 
 
 def _get_warmup_mlp_grads(model: torch.nn.Module,
-                          warmup_mlp_grads: LayerLevelGradType,
+                          warmup_mlp_grads: LayerLevelBlockType,
                           downsample_mlp_blocks_ratio: float) -> None:
     """
     Accumulate warmup gradients for MLP layers across steps.
@@ -99,7 +99,7 @@ def _get_warmup_mlp_grads(model: torch.nn.Module,
         layer_number = int(match.group(1)) if match else None
         if downsample_mlp_blocks_ratio >= 0 and 'mlp' in name and 'weight' in name:
             grad = safe_get_full_grad(param)  # (hidden_dim, head_dim)
-            module_name = get_module_name(name, SMTBlockType.MLP)
+            module_name = get_module_name(name, ModuleType.MLP)
             key = (module_name, layer_number)
 
             if key not in warmup_mlp_grads:
@@ -112,7 +112,7 @@ def _get_warmup_mlp_grads(model: torch.nn.Module,
 
 
 def _get_warmup_attention_grads(
-        model: torch.nn.Module, warmup_attention_grads: LayerLevelGradType,
+        model: torch.nn.Module, warmup_attention_grads: LayerLevelBlockType,
         downsample_attention_blocks_ratio: float) -> None:
     """
     Accumulate warmup gradients for attention layers across steps.
@@ -124,7 +124,7 @@ def _get_warmup_attention_grads(
         layer_number = int(match.group(1)) if match else None
         if downsample_attention_blocks_ratio >= 0 and 'self_attn' in name and 'weight' in name:
             grad = safe_get_full_grad(param)  # (hidden_dim, head_dim)
-            module_name = get_module_name(name, SMTBlockType.ATTENTION)
+            module_name = get_module_name(name, ModuleType.ATTENTION)
             key = (module_name, layer_number)
 
             if key not in warmup_attention_grads:

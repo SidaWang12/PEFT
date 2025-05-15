@@ -1,20 +1,19 @@
 from collections import defaultdict
 import os
 import heapq
-from typing import Dict, List
-import torch
-from utils.block_dimention_calculation import calculate_block_dimension
+from block_libs.block_libs import calculate_mean_grad_per_block, calculate_targeted_module_dims, get_total_num_blocks
+from block_libs.block_dimention_calculation import calculate_block_dimension
 from utils.logging_utils import logger
-from smt.trainers.types_and_structs import LayerLevelGradType, SMTBlockType, SelectedSubmatrixType
+from block_libs.types_and_structs import LayerLevelBlockType, ModuleType, SelectedSubmatrixType
 from smt.smt_calculation.smt_gradient_plotter import generate_grad_heatmaps, plot_layer_level_grads, plot_gradient_per_block_distribution
 from transformers import AutoModelForCausalLM
 
 
 def select_submatrix(model: AutoModelForCausalLM,
-                     warmup_grads: LayerLevelGradType, global_step: int,
+                     warmup_grads: LayerLevelBlockType, global_step: int,
                      enable_analysis: bool, output_dir: str,
                      downsample_blocks_ratio: float,
-                     mlp_or_attention: SMTBlockType) -> SelectedSubmatrixType:
+                     mlp_or_attention: ModuleType) -> SelectedSubmatrixType:
     warup_abs_grads = {}
     for key in warmup_grads:
         warup_abs_grads[key] = warmup_grads[key].abs() / global_step
@@ -34,13 +33,13 @@ def select_submatrix(model: AutoModelForCausalLM,
     block_dimension = calculate_block_dimension(model)
     logger.info(f"block_size is {block_dimension}")
 
-    targeted_module_dims = _calculate_targeted_module_dims(
+    targeted_module_dims = calculate_targeted_module_dims(
         model, block_dimension)
-    num_total_blocks = _get_total_num_blocks(model, block_dimension)
+    num_total_blocks = get_total_num_blocks(model, block_dimension)
 
-    block_means = _calculate_mean_grad_per_block(warup_abs_grads,
-                                                 targeted_module_dims,
-                                                 block_dimension)
+    block_means = calculate_mean_grad_per_block(warup_abs_grads,
+                                                targeted_module_dims,
+                                                block_dimension)
 
     selected_submatrix = _select_submatrix_based_on_grads(
         downsample_blocks_ratio, enable_analysis,
@@ -50,8 +49,8 @@ def select_submatrix(model: AutoModelForCausalLM,
 
 
 def _analyze_layer_level_grads(output_dir: str,
-                               warup_abs_grads: LayerLevelGradType,
-                               mlp_or_attention: SMTBlockType) -> None:
+                               warup_abs_grads: LayerLevelBlockType,
+                               mlp_or_attention: ModuleType) -> None:
     """
     Analyze and plot per-layer gradient statistics.
     """
@@ -67,64 +66,6 @@ def _analyze_layer_level_grads(output_dir: str,
         ) / warup_abs_grads[key].mean()
     plot_layer_level_grads(grad_statistics, output_dir, mlp_or_attention,
                            "var-divide-by-mean")
-
-
-def _mean_abs(grad_tensor: torch.Tensor) -> torch.Tensor:
-    """
-    Compute absolute mean over last two dimensions.
-    """
-    # print_rank_0(f"use mean()abs() as calculation strategy", global_rank)
-    return grad_tensor.mean(dim=(1, 3)).abs()
-
-
-def _calculate_targeted_module_dims(model: AutoModelForCausalLM, block_dimension: int) \
-    -> Dict[str, List[int]]:
-    targeted_module_dims = {}
-
-    TARGET_MODULE_NAMES = {
-        'gate_proj', 'up_proj', 'down_proj', 'q_proj', 'k_proj', 'v_proj',
-        'o_proj'
-    }
-
-    for name, param in model.named_parameters():
-        if ("mlp" in name or "attn" in name) and "weight" in name:
-            for target_module_name in TARGET_MODULE_NAMES:
-                if target_module_name in name and target_module_name not in targeted_module_dims:
-                    targeted_module_dims[target_module_name] = [
-                        int(param.shape[0] / block_dimension),
-                        int(param.shape[1] / block_dimension)
-                    ]
-                    break
-
-    logger.info(f"targeted_module_dims: {targeted_module_dims}")
-    return targeted_module_dims
-
-
-def _get_total_num_blocks(model: AutoModelForCausalLM,
-                          block_dimension: int) -> int:
-    num_total_blocks = 0
-    for _, param in model.named_parameters():
-        if isinstance(param, torch.Tensor) and param.ndim == 2:
-            num_total_blocks += param.shape[0] / block_dimension * param.shape[
-                1] / block_dimension
-
-    return int(num_total_blocks)
-
-
-def _calculate_mean_grad_per_block(warup_abs_grads: LayerLevelGradType,
-                                   targeted_module_dims: Dict[str, List[int]],
-                                   block_dimension: int) -> Dict:
-    block_means = {}
-    for key, grad in warup_abs_grads.items():
-        targeted_module_name = key[0]
-        targeted_module_dim1 = targeted_module_dims[targeted_module_name][0]
-        targeted_module_dim2 = targeted_module_dims[targeted_module_name][1]
-
-        reshaped_grad = grad.reshape(targeted_module_dim1, block_dimension,
-                                     targeted_module_dim2, block_dimension)
-        block_means[key] = _mean_abs(reshaped_grad)
-
-    return block_means
 
 
 def _select_submatrix_based_on_grads(downsample_blocks_ratio: float,

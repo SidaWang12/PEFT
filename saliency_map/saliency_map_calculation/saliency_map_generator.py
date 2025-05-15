@@ -1,7 +1,11 @@
 from collections import defaultdict
+import re
 
 import torch
 from tqdm import tqdm
+
+from block_libs.get_module_names import get_module_name
+from block_libs.types_and_structs import ModuleType
 
 
 def prepare_batch(batch, tokenizer):
@@ -38,20 +42,14 @@ def prepare_batch(batch, tokenizer):
     }
 
 
-def compute_aggregated_saliency_batch(model,
-                                      tokenizer,
-                                      dataset,
-                                      batch_size,
-                                      target_layers=["down_proj"]):
+def compute_aggregated_saliency_batch(model, tokenizer, dataset, batch_size):
     model.eval()
-
-    for name, param in model.named_parameters():
-        param.requires_grad = any(layer in name for layer in target_layers)
-        print(name, param.requires_grad)
 
     num_samples = len(dataset)
     saliency_dict = defaultdict(lambda: 0)
     device = model.device
+
+    pattern = re.compile(r'model\.layers\.(\d+)\.')
 
     for batch_start in tqdm(range(0, num_samples, batch_size),
                             desc="Processing batches"):
@@ -70,10 +68,19 @@ def compute_aggregated_saliency_batch(model,
             outputs.loss.backward()
 
             for name, param in model.named_parameters():
-                if param.grad is not None and any(layer in name
-                                                  for layer in target_layers):
+                if param.grad is not None and ("mlp" in name
+                                               or "self_attn" in name):
+                    match = pattern.search(name)
+                    layer_number = int(match.group(1)) if match else None
+                    if "mlp" in name:
+                        module_name = get_module_name(name, ModuleType.MLP)
+                    else:
+                        module_name = get_module_name(name,
+                                                      ModuleType.ATTENTION)
+                    key = (module_name, layer_number)
+
                     grad = param.grad.abs().detach().cpu()
-                    saliency_dict[name] += grad
+                    saliency_dict[key] += grad
 
         except Exception as e:
             print(f"Error processing batch {batch_start}: {str(e)}")
@@ -83,5 +90,5 @@ def compute_aggregated_saliency_batch(model,
         for name in saliency_dict:
             if not isinstance(saliency_dict[name], int):
                 saliency_dict[name] /= num_samples
-    
+
     return saliency_dict

@@ -1,19 +1,21 @@
 import json
 import os
-from smt.trainers.types_and_structs import SMTBlockType
+from block_libs.types_and_structs import ModuleType
 from trl import TrlParser, ModelConfig, ScriptArguments
 
 from smt.trainers.smt_trainer import SMTTrainerMode, SMTTrainer
 from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
-from utils.logging_utils import logger
+from utils.logging_utils import logger, log_training_metrics
 from smt.smt_calculation.smt_gradient_selector import select_submatrix
-from smt.trainers.smt_config import SMTConfig
-from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets, print_loss_through_whole_training
+from peft_config.peft_config import PeftConfig
+from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
+
+from deepspeed.profiling.flops_profiler import FlopsProfiler
 
 
 def main():
     # Parse arguments
-    parser = TrlParser((ScriptArguments, SMTConfig, ModelConfig))
+    parser = TrlParser((ScriptArguments, PeftConfig, ModelConfig))
     script_args, training_args, model_args = parser.parse_args_and_config()
 
     logger.info("Script Arguments: %s", script_args)
@@ -46,6 +48,9 @@ def main():
                                 training_args.seed,
                                 training_args.test_set_percentage)
 
+    flops_profiler = FlopsProfiler(model)
+    flops_profiler.start_profile()
+
     # overfit_small_data = datasets["train"].select(range(100))
     # Initialize trainer
     trainer = SMTTrainer(
@@ -72,7 +77,7 @@ def main():
         selected_mlp_submatrix = select_submatrix(
             model, trainer.warmup_mlp_grads, trainer.state.global_step,
             training_args.enable_analysis, training_args.output_dir,
-            training_args.downsample_mlp_blocks_ratio, SMTBlockType.MLP)
+            training_args.downsample_mlp_blocks_ratio, ModuleType.MLP)
     logger.info(f"selected_mlp_submatrix {selected_mlp_submatrix}")
 
     selected_attention_submatrix = {}
@@ -81,7 +86,7 @@ def main():
             model, trainer.warmup_attention_grads, trainer.state.global_step,
             training_args.enable_analysis, training_args.output_dir,
             training_args.downsample_attention_blocks_ratio,
-            SMTBlockType.ATTENTION)
+            ModuleType.ATTENTION)
     logger.info(f"selected_attention_submatrix {selected_attention_submatrix}")
 
     submatrix_file_path = os.path.join(training_args.output_dir,
@@ -92,7 +97,9 @@ def main():
         submatrix_file_path=submatrix_file_path)
     logger.info(f"Submatrix file is saved to {submatrix_file_path}")
 
-    print_loss_through_whole_training(trainer.state.log_history)
+    flops_profiler.stop_profile()
+    log_training_metrics(trainer.state, trainer.sum_training_step_time,
+                         flops_profiler)
 
 
 def save_selected_submatrix(selected_mlp_submatrix,

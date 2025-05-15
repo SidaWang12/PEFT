@@ -2,23 +2,23 @@ from transformers import AutoModelForCausalLM
 import json
 import os
 from smt.model_sparsifier.unselected_block_freezer import convert_linear_layer_to_matrix_sparsity
-from smt.trainers.types_and_structs import SelectedSubmatrixType
+from block_libs.types_and_structs import SelectedSubmatrixType
 from smt.model_sparsifier.unselected_layer_freezer import model_freeze_unselected_matrix_layer
 from trl import TrlParser, ModelConfig, ScriptArguments
 from transformers.trainer_callback import TrainerState
 from smt.trainers.smt_trainer import SMTTrainer, SMTTrainerMode
 from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
-from utils.logging_utils import logger
-from smt.trainers.smt_config import SMTConfig
+from utils.logging_utils import logger, log_training_metrics
+from peft_config.peft_config import PeftConfig
 from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
-from utils.block_dimention_calculation import calculate_block_dimension
+from block_libs.block_dimention_calculation import calculate_block_dimension
 
 from deepspeed.profiling.flops_profiler import FlopsProfiler
 
 
 def main():
     # Parse arguments
-    parser = TrlParser((ScriptArguments, SMTConfig, ModelConfig))
+    parser = TrlParser((ScriptArguments, PeftConfig, ModelConfig))
     script_args, training_args, model_args = parser.parse_args_and_config()
 
     logger.info("Script Arguments: %s", script_args)
@@ -97,10 +97,8 @@ def main():
     logger.info("Training completed successfully")
 
     flops_profiler.stop_profile()
-
-    _print_loss_through_whole_training(trainer.state,
-                                      trainer.sum_training_step_time,
-                                      flops_profiler)
+    log_training_metrics(trainer.state, trainer.sum_training_step_time,
+                         flops_profiler)
 
 def _load_selected_submatrix(selected_submatrix_file: str) -> \
         tuple[SelectedSubmatrixType, SelectedSubmatrixType]:
@@ -132,26 +130,6 @@ def _trainable_parameters_statistics(model: AutoModelForCausalLM) -> int:
                about {rate}% matrix sparsity parameters in the model are training"
                 )
     return selected_num
-
-
-def _print_loss_through_whole_training(trainer_state: TrainerState,
-                                       sum_training_step_time: float,
-                                       flops_profiler: FlopsProfiler) -> None:
-    train_losses = [
-        log["loss"] for log in trainer_state.log_history if "loss" in log
-    ]
-    eval_losses = [
-        log["eval_loss"] for log in trainer_state.log_history
-        if "eval_loss" in log
-    ]
-    logger.info(f"train_losses: {train_losses}")
-    logger.info(f"eval_losses: {eval_losses}")
-
-    logger.info(
-        f"Average training step  {sum_training_step_time / trainer_state.global_step}s"
-    )
-
-    logger.info(f"FLOPs: {flops_profiler.get_total_flops() / 1e12} TFLOPS")
 
 
 if __name__ == "__main__":

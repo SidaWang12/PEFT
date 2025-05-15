@@ -8,11 +8,11 @@ import numpy as np
 import torch
 import seaborn as sns
 
-from smt.trainers.types_and_structs import LayerLevelGradType, SMTBlockType
+from block_libs.types_and_structs import LayerLevelBlockType, ModuleType
 
 
 def generate_grad_heatmaps(grads_heatmap_path: str,
-                           warup_abs_grads: LayerLevelGradType) -> None:
+                           warup_abs_grads: LayerLevelBlockType) -> None:
     def downsample(tensor, new_h, new_w):
         h, w = tensor.shape
         tensor = tensor[:h - h % new_h, :w - w % new_w]
@@ -102,8 +102,8 @@ def generate_grad_heatmaps(grads_heatmap_path: str,
         os.remove(file_path)
 
 
-def plot_layer_level_grads(grad_statistics: LayerLevelGradType,
-                           output_dir: str, mlp_or_attention: SMTBlockType,
+def plot_layer_level_grads(grad_statistics: LayerLevelBlockType,
+                           output_dir: str, mlp_or_attention: ModuleType,
                            statistical_method: str) -> None:
     os.makedirs(output_dir, exist_ok=True)
 
@@ -111,7 +111,7 @@ def plot_layer_level_grads(grad_statistics: LayerLevelGradType,
     layers = sorted(set(layer for (_, layer) in grad_statistics.keys()))
 
     # Prepare data for plotting
-    if mlp_or_attention == SMTBlockType.MLP:
+    if mlp_or_attention == ModuleType.MLP:
         proj_names = ['gate_proj', 'up_proj', 'down_proj']
         colors = ['blue', 'green', 'red']
     else:

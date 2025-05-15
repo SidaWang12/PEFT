@@ -1,6 +1,6 @@
 enable_analysis: false
-downsample_mlp_blocks_ratio: 0
-downsample_attention_blocks_ratio: 0
+downsample_mlp_blocks_ratio: 0.005
+downsample_attention_blocks_ratio: 0.006
 
 learning_rate: 1e-5
 output_dir: smt/logs
