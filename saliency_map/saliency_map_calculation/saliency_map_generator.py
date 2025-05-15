@@ -84,6 +84,4 @@ def compute_aggregated_saliency_batch(model,
             if not isinstance(saliency_dict[name], int):
                 saliency_dict[name] /= num_samples
     
-    print(saliency_dict.keys())
-
-    return {k: v for k, v in saliency_dict.items() if not isinstance(v, int)}
+    return saliency_dict

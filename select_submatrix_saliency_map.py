@@ -35,7 +35,6 @@ def main():
         script_args.dataset_config,
         script_args.dataset_train_split,
         training_args.seed,
-        # training_args.test_set_percentage)
         test_set_percentage=0.2)
 
     # Log initial memory stats
@@ -44,9 +43,11 @@ def main():
     model.requires_grad_(True)
 
     saliency_scores = compute_aggregated_saliency_batch(
-        model, tokenizer, train_data.select(range(0, 100)), batch_size=16)
+        model, tokenizer, train_data.select(range(0, 10)), batch_size=16)
+    
+    logger.info("Plotting saliency maps...")
     plot_saliency_map(training_args.output_dir,
-                      saliency_scores["model.layers.0.mlp.down_proj.weight"])
+                      saliency_scores)
 
 
 if __name__ == "__main__":
