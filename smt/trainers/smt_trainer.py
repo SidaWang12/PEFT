@@ -1,12 +1,9 @@
-import re
 import time
 from typing import Any, Callable, Optional, Union
-from libs.block_libs.get_module_names import get_module_name
-from libs.block_libs.types_and_structs import LayerLevelBlockType, ModuleType
+from smt.smt_calculation.get_warmup_grads import get_warmup_attention_grads, get_warmup_mlp_grads
 from trl.trainer.sft_trainer import SFTTrainer, SFTConfig
 import torch
 from torch import nn
-from deepspeed.utils import safe_get_full_grad
 
 from transformers import (
     BaseImageProcessor,
@@ -77,60 +74,11 @@ class SMTTrainer(SFTTrainer):
         loss = super().training_step(model, inputs, num_items_in_batch)
 
         if self.mode == SMTTrainerMode.SelectSubmatrixMode:
-            _get_warmup_mlp_grads(model, self.warmup_mlp_grads,
+            get_warmup_mlp_grads(model, self.warmup_mlp_grads,
                                   self.downsample_mlp_blocks_ratio)
-            _get_warmup_attention_grads(model, self.warmup_attention_grads,
+            get_warmup_attention_grads(model, self.warmup_attention_grads,
                                         self.downsample_attention_blocks_ratio)
         self.sum_training_step_time += time.time() - start_time
 
         return loss
 
-
-def _get_warmup_mlp_grads(model: torch.nn.Module,
-                          warmup_mlp_grads: LayerLevelBlockType,
-                          downsample_mlp_blocks_ratio: float) -> None:
-    """
-    Accumulate warmup gradients for MLP layers across steps.
-    """
-    pattern = re.compile(r'model\.layers\.(\d+)\.')
-
-    for name, param in model.named_parameters():
-        match = pattern.search(name)
-        layer_number = int(match.group(1)) if match else None
-        if downsample_mlp_blocks_ratio >= 0 and 'mlp' in name and 'weight' in name:
-            grad = safe_get_full_grad(param)  # (hidden_dim, head_dim)
-            module_name = get_module_name(name, ModuleType.MLP)
-            key = (module_name, layer_number)
-
-            if key not in warmup_mlp_grads:
-                # warmup_mlp_grads[(module_name, layer_number)] = grad.detach().to(torch.float32)
-                warmup_mlp_grads[key] = grad.detach().cpu().to(torch.float32)
-            else:
-                warmup_mlp_grads[key] += grad.detach().cpu().to(torch.float32)
-                # warmup_mlp_grads[(module_name, layer_number)] += grad.detach().to(torch.float32)
-                # del grad
-
-
-def _get_warmup_attention_grads(
-        model: torch.nn.Module, warmup_attention_grads: LayerLevelBlockType,
-        downsample_attention_blocks_ratio: float) -> None:
-    """
-    Accumulate warmup gradients for attention layers across steps.
-    """
-    pattern = re.compile(r'model\.layers\.(\d+)\.')
-
-    for name, param in model.named_parameters():
-        match = pattern.search(name)
-        layer_number = int(match.group(1)) if match else None
-        if downsample_attention_blocks_ratio >= 0 and 'self_attn' in name and 'weight' in name:
-            grad = safe_get_full_grad(param)  # (hidden_dim, head_dim)
-            module_name = get_module_name(name, ModuleType.ATTENTION)
-            key = (module_name, layer_number)
-
-            if key not in warmup_attention_grads:
-                warmup_attention_grads[key] = grad.detach().cpu().to(
-                    torch.float32)
-
-            else:
-                warmup_attention_grads[key] += grad.detach().cpu().to(
-                    torch.float32)
