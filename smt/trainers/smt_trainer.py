@@ -1,8 +1,8 @@
 import re
 import time
 from typing import Any, Callable, Optional, Union
-from block_libs.get_module_names import get_module_name
-from block_libs.types_and_structs import LayerLevelBlockType, ModuleType
+from libs.block_libs.get_module_names import get_module_name
+from libs.block_libs.types_and_structs import LayerLevelBlockType, ModuleType
 from trl.trainer.sft_trainer import SFTTrainer, SFTConfig
 import torch
 from torch import nn

@@ -4,8 +4,8 @@ import re
 import torch
 from tqdm import tqdm
 
-from block_libs.get_module_names import get_module_name
-from block_libs.types_and_structs import ModuleType
+from libs.block_libs.get_module_names import get_module_name
+from libs.block_libs.types_and_structs import ModuleType
 
 
 def prepare_batch(batch, tokenizer):

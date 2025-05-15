@@ -1,4 +1,4 @@
-from block_libs.types_and_structs import ModuleType
+from libs.block_libs.types_and_structs import ModuleType
 
 
 def get_module_name(name: str, smt_block_type: ModuleType) -> str:

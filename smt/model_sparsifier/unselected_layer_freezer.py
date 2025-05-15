@@ -2,8 +2,8 @@ import re
 
 from transformers import AutoModelForCausalLM
 
-from block_libs.get_module_names import get_module_name
-from block_libs.types_and_structs import ModuleType, SelectedSubmatrixType
+from libs.block_libs.get_module_names import get_module_name
+from libs.block_libs.types_and_structs import ModuleType, SelectedSubmatrixType
 
 
 def model_freeze_unselected_matrix_layer(

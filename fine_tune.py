@@ -2,16 +2,16 @@ from transformers import AutoModelForCausalLM
 import json
 import os
 from smt.model_sparsifier.unselected_block_freezer import convert_linear_layer_to_matrix_sparsity
-from block_libs.types_and_structs import SelectedSubmatrixType
+from libs.block_libs.types_and_structs import SelectedSubmatrixType
 from smt.model_sparsifier.unselected_layer_freezer import model_freeze_unselected_matrix_layer
 from trl import TrlParser, ModelConfig, ScriptArguments
 from transformers.trainer_callback import TrainerState
 from smt.trainers.smt_trainer import SMTTrainer, SMTTrainerMode
-from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
-from utils.logging_utils import logger, log_training_metrics
-from peft_config.peft_config import PeftConfig
-from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
-from block_libs.block_dimention_calculation import calculate_block_dimension
+from libs.utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
+from libs.utils.logging_utils import logger, log_training_metrics
+from libs.peft_config.peft_config import PeftConfig
+from libs.utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
+from libs.block_libs.block_dimention_calculation import calculate_block_dimension
 
 from deepspeed.profiling.flops_profiler import FlopsProfiler
 

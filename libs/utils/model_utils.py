@@ -2,7 +2,7 @@ from typing import Any, Dict, List, Optional
 from datasets import Dataset, load_dataset
 from trl import TrlParser, ModelConfig, ScriptArguments
 
-from utils.logging_utils import logger
+from libs.utils.logging_utils import logger
 
 from transformers import (
     AutoModelForCausalLM,

@@ -1,14 +1,14 @@
 import json
 import os
-from block_libs.types_and_structs import ModuleType
+from libs.block_libs.types_and_structs import ModuleType
 from trl import TrlParser, ModelConfig, ScriptArguments
 
 from smt.trainers.smt_trainer import SMTTrainerMode, SMTTrainer
-from utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
-from utils.logging_utils import logger, log_training_metrics
+from libs.utils.monitoring import GPUMemoryStatsCallback, TrainingMonitor
+from libs.utils.logging_utils import logger, log_training_metrics
 from smt.smt_calculation.smt_gradient_selector import select_submatrix
-from peft_config.peft_config import PeftConfig
-from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
+from libs.peft_config.peft_config import PeftConfig
+from libs.utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
 
 from deepspeed.profiling.flops_profiler import FlopsProfiler
 

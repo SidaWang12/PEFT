@@ -2,8 +2,8 @@ from typing import Dict, List
 import torch
 
 from transformers import AutoModelForCausalLM
-from utils.logging_utils import logger
-from block_libs.types_and_structs import LayerLevelBlockType
+from libs.utils.logging_utils import logger
+from libs.block_libs.types_and_structs import LayerLevelBlockType
 
 
 def _mean_abs(grad_tensor: torch.Tensor) -> torch.Tensor:

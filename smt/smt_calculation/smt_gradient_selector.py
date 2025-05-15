@@ -1,11 +1,11 @@
 from collections import defaultdict
 import os
 import heapq
-from block_libs.block_libs import calculate_mean_grad_per_block, calculate_targeted_module_dims, get_total_num_blocks
-from block_libs.block_dimention_calculation import calculate_block_dimension
-from utils.logging_utils import logger
-from block_libs.types_and_structs import LayerLevelBlockType, ModuleType, SelectedSubmatrixType
-from smt.smt_calculation.smt_gradient_plotter import generate_grad_heatmaps, plot_layer_level_grads, plot_gradient_per_block_distribution
+from libs.block_libs.block_libs import calculate_mean_grad_per_block, calculate_targeted_module_dims, get_total_num_blocks
+from libs.block_libs.block_dimention_calculation import calculate_block_dimension
+from libs.utils.logging_utils import logger
+from libs.block_libs.types_and_structs import LayerLevelBlockType, ModuleType, SelectedSubmatrixType
+from libs.plotters.gradient_plotter import generate_grad_heatmaps, plot_layer_level_grads, plot_gradient_per_block_distribution
 from transformers import AutoModelForCausalLM
 
 

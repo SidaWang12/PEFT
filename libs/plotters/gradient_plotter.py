@@ -8,7 +8,7 @@ import numpy as np
 import torch
 import seaborn as sns
 
-from block_libs.types_and_structs import LayerLevelBlockType, ModuleType
+from libs.block_libs.types_and_structs import LayerLevelBlockType, ModuleType
 
 
 def generate_grad_heatmaps(grads_heatmap_path: str,

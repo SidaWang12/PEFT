@@ -2,12 +2,12 @@ import json
 import os
 from saliency_map.saliency_map_calculation.saliency_map_generator import compute_aggregated_saliency_batch
 from saliency_map.saliency_map_calculation.saliency_map_selector import select_submatrix_based_on_grads
-from peft_config.peft_config import PeftConfig
+from libs.peft_config.peft_config import PeftConfig
 from trl import TrlParser, ModelConfig, ScriptArguments
 
-from utils.monitoring import TrainingMonitor
-from utils.logging_utils import logger
-from utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
+from libs.utils.monitoring import TrainingMonitor
+from libs.utils.logging_utils import logger
+from libs.utils.model_utils import load_and_configure_tokenizer, initialize_model, prepare_datasets
 
 
 def main():
@@ -34,11 +34,12 @@ def main():
     # Initialize components
     tokenizer = load_and_configure_tokenizer(model_args)
     model = initialize_model(model_args.model_name_or_path, model_kwargs)
-    datasets = prepare_datasets(script_args.dataset_name,
-                                script_args.dataset_config,
-                                script_args.dataset_train_split,
-                                training_args.seed,
-                                test_set_percentage=training_args.test_set_percentage)
+    datasets = prepare_datasets(
+        script_args.dataset_name,
+        script_args.dataset_config,
+        script_args.dataset_train_split,
+        training_args.seed,
+        test_set_percentage=training_args.test_set_percentage)
 
     # Log initial memory stats
     TrainingMonitor.memory_stats()
@@ -57,7 +58,7 @@ def main():
         saliency_scores,
         training_args.downsample_saliency_map_ratio,
         enable_analysis=enable_analysis)
-    
+
     submatrix_file_path = os.path.join(training_args.output_dir,
                                        'selected_blocks.json')
     logger.info(f"Selected blocks: {selected_submatrix}")
@@ -68,6 +69,7 @@ def main():
     # if enable_analysis:
     #     logger.info("Plotting saliency maps...")
     #     plot_saliency_map(training_args.output_dir, saliency_scores)
+
 
 def save_selected_submatrix(selected_submatrix, submatrix_file_path):
     with open(submatrix_file_path, "w") as f:
