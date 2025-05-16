@@ -260,7 +260,6 @@ def main(args):
     for dataset in args.datasets:
         print_rank_0(f"Handling dataset: {dataset}")
         t_test_data = json.load(open(os.path.join(args.data_path, dataset, 'test.json'), 'r'))
-        t_test_data = t_test_data[0:10]
 
         prompts = []
         for example in t_test_data:
