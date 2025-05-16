@@ -291,7 +291,6 @@ def main(args):
             example['raw_output'] = output
             target = example["answer"].lower()
             predict = extract_answer(dataset, output)
-            print("target", target, "predict", predict)
             if target == predict:
                 correct += 1
             example['prediction'] = predict
